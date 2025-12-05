@@ -53,6 +53,7 @@ pub struct NodeTypeInfo {
 pub struct Node {
     pub node_type: NodeTypeRef,
     pub inputs: Vec<Option<ValueRef>>,
+    pub extra_data: Option<String>
 }
 
 #[derive(Debug)]

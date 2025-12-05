@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use nom::{
     IResult, Parser,
     branch::alt,
-    bytes::tag,
+    bytes::{complete::take_until, tag},
     character::{
         complete::{alpha1, alphanumeric0},
         multispace0,
@@ -12,7 +12,7 @@ use nom::{
     error::{Error, ParseError},
     multi::{many0, separated_list0},
     number::float,
-    sequence::{self, delimited, terminated},
+    sequence::{self, delimited, preceded, terminated},
 };
 
 use crate::nodegraph::{
@@ -31,7 +31,7 @@ pub enum NodeExpression {
     FloatLiteral(f32),
     IntLiteral(i32),
     Assignment(String, Box<NodeExpression>),
-    Construction(String, Vec<NodeExpression>),
+    Construction(String, Option<String>, Vec<NodeExpression>),
     Output(Box<NodeExpression>, String),
 }
 
@@ -63,11 +63,12 @@ impl<'a> Parser<&'a [u8]> for ExprParser {
                 // Construction
                 (
                     parse_identifier(),
+                    opt(preceded(ws(tag(":")), take_until("("))),
                     ws(tag("(")),
                     separated_list0(ws(tag(",")), parse_expr()),
                     ws(tag(")")),
                 )
-                    .map(|(name, _, args, _)| NodeExpression::Construction(name, args)),
+                    .map(|(name, info, _, args, _)| NodeExpression::Construction(name, info.map(|b| String::from_utf8_lossy(b).to_string()), args)),
                 // Assignment
                 (parse_identifier(), ws(tag("=")), ws(parse_expr()))
                     .map(|(name, _, expr)| NodeExpression::Assignment(name, Box::new(expr))),
@@ -118,7 +119,7 @@ fn process_node_expr(
             state.named_vars.insert(name, rhs);
             Ok(rhs)
         }
-        NodeExpression::Construction(typename, node_expressions) => {
+        NodeExpression::Construction(typename, data, node_expressions) => {
             let args: Result<Vec<Option<ValueRef>>, ()> = node_expressions
                 .into_iter()
                 .map(|expr| {
@@ -140,6 +141,7 @@ fn process_node_expr(
             let node = Node {
                 node_type: type_ref,
                 inputs: args?,
+                extra_data: data
             };
 
             let node_id = graph.add_node(node);
