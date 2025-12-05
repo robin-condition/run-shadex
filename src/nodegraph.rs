@@ -1,58 +1,89 @@
 use std::collections::HashMap;
 
+#[derive(Clone, Copy, Debug)]
 pub struct NodeRef {
     id: usize,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct ValueRef {
     pub node: NodeRef,
     pub output_index: usize,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum NodeTypeRef {
     Constant,
     Vec3,
     Out,
 }
 
+#[derive(Debug)]
 pub enum PrimitiveType {
     F32,
     I32,
 }
 
+#[derive(Debug)]
 pub struct ValueType {
     pub inputs: HashMap<String, Box<ValueType>>,
     pub output: PrimitiveType,
 }
 
+#[derive(Debug)]
 pub struct InputInfo {
     pub name: String,
     pub value_type: Box<ValueType>,
 }
 
+#[derive(Debug)]
 pub struct OutputInfo {
     pub name: String,
-    pub primitive_type: PrimitiveType,
+    pub value_type: Box<ValueType>,
 }
 
+#[derive(Debug)]
 pub struct NodeTypeInfo {
     pub name: &'static str,
     pub inputs: Vec<InputInfo>,
     pub outputs: Vec<OutputInfo>,
 }
 
+#[derive(Debug)]
 pub struct Node {
     pub node_type: NodeTypeRef,
     pub inputs: Vec<Option<ValueRef>>,
 }
 
+#[derive(Debug)]
 pub struct TypeUniverse {
-    node_types: HashMap<NodeTypeRef, NodeTypeInfo>,
+    pub node_types: HashMap<NodeTypeRef, NodeTypeInfo>,
 }
 
+#[derive(Debug)]
 pub struct NodeGraph {
-    types: TypeUniverse,
+    pub types: TypeUniverse,
     nodes: HashMap<usize, Node>,
     next_id: usize,
+}
+
+impl NodeGraph {
+    pub fn add_node(&mut self, node: Node) -> NodeRef {
+        let node_id = self.next_id;
+        self.nodes.insert(node_id, node);
+        self.next_id += 1;
+        NodeRef { id: node_id }
+    }
+
+    pub fn get_node(&self, node_ref: NodeRef) -> Option<&Node> {
+        self.nodes.get(&node_ref.id)
+    }
+
+    pub fn new(types: TypeUniverse) -> Self {
+        NodeGraph {
+            types,
+            nodes: HashMap::new(),
+            next_id: 0,
+        }
+    }
 }
