@@ -53,7 +53,7 @@ pub struct NodeTypeInfo {
 pub struct Node {
     pub node_type: NodeTypeRef,
     pub inputs: Vec<Option<ValueRef>>,
-    pub extra_data: Option<String>
+    pub extra_data: Option<String>,
 }
 
 #[derive(Debug)]
@@ -86,5 +86,9 @@ impl NodeGraph {
             nodes: HashMap::new(),
             next_id: 0,
         }
+    }
+
+    pub fn iter_nodes(&self) -> impl Iterator<Item = NodeRef> {
+        self.nodes.iter().map(|f| NodeRef { id: *f.0 })
     }
 }

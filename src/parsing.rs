@@ -68,7 +68,13 @@ impl<'a> Parser<&'a [u8]> for ExprParser {
                     separated_list0(ws(tag(",")), parse_expr()),
                     ws(tag(")")),
                 )
-                    .map(|(name, info, _, args, _)| NodeExpression::Construction(name, info.map(|b| String::from_utf8_lossy(b).to_string()), args)),
+                    .map(|(name, info, _, args, _)| {
+                        NodeExpression::Construction(
+                            name,
+                            info.map(|b| String::from_utf8_lossy(b).to_string()),
+                            args,
+                        )
+                    }),
                 // Assignment
                 (parse_identifier(), ws(tag("=")), ws(parse_expr()))
                     .map(|(name, _, expr)| NodeExpression::Assignment(name, Box::new(expr))),
@@ -141,7 +147,7 @@ fn process_node_expr(
             let node = Node {
                 node_type: type_ref,
                 inputs: args?,
-                extra_data: data
+                extra_data: data,
             };
 
             let node_id = graph.add_node(node);
@@ -181,10 +187,6 @@ pub fn construct_node_graph(exprs: Vec<NodeExpression>) -> Result<NodeGraph, ()>
                 NodeTypeInfo {
                     name: "Constant",
                     inputs: vec![],
-                    // value_type: Box::new(ValueType {
-                    //    inputs: [("component".to_string(), Box::new(ValueType { inputs: HashMap::new(), output: PrimitiveType::I32 }))].into(),
-                    //    output: PrimitiveType::F32,
-                    //})
                     outputs: vec![OutputInfo {
                         name: "val".to_string(),
                         value_type: Box::new(ValueType {
