@@ -21,7 +21,7 @@ pub enum NodeExpression {
     Output(Box<NodeExpression>, String),
 }
 
-// https://github.com/rust-bakery/nom/blob/main/tests/json.rs
+// https://github.com/rust-bakery/nom/blob/main/examples/json2.rs
 fn ws<'a, O, E: ParseError<&'a [u8]>, F: Parser<&'a [u8], Output = O, Error = E>>(
   f: F,
 ) -> impl Parser<&'a [u8], Output = O, Error = E> {
