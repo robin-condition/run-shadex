@@ -88,7 +88,7 @@ impl NodeGraph {
         }
     }
 
-    pub fn iter_nodes(&self) -> impl Iterator<Item = NodeRef> {
-        self.nodes.iter().map(|f| NodeRef { id: *f.0 })
+    pub fn iter_nodes(&self) -> impl Iterator<Item = (NodeRef, &Node)> {
+        self.nodes.iter().map(|f| (NodeRef { id: *f.0 }, f.1))
     }
 }
