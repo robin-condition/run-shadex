@@ -2,8 +2,13 @@ use std::collections::HashMap;
 
 use rpds::HashTrieMap;
 
-use crate::nodegraph::{NodeGraph, NodeRef, NodeTypeRef, ValueRef};
+use crate::{
+    execution::value_reprs::{InputSet, ParameterValueSet},
+    nodegraph::{NodeGraph, NodeRef, NodeTypeRef, ValueRef},
+};
 
+pub mod computation_requests;
+pub mod typechecking;
 pub mod value_reprs;
 
 pub struct Executor<'a> {
@@ -11,11 +16,7 @@ pub struct Executor<'a> {
 }
 
 pub struct SinglePrimitiveComputationResult<T: Copy> {
-    val: T
-}
-
-pub struct MultiPrimitiveComputationResult<T: Copy> {
-
+    val: T,
 }
 
 struct FunctionRepresentation {
@@ -38,8 +39,6 @@ struct GPUFragShader {
     pub source: String, // CHANGE to something using rspirv
     pub bindings: (),   // Buh
 }
-
-
 
 enum ComputationRepresentation {
     // Constant -- need? distinction between uniform buffer and CPU-side variable
@@ -72,7 +71,8 @@ impl<'a> Executor<'a> {
     }
     pub fn execute(&mut self) -> Option<()> {
         let outval = self.get_output_valueref()?;
-
+        panic!()
+        /*
         let outp = self.request_computation(
             outval,
             InputSet {
@@ -85,5 +85,6 @@ impl<'a> Executor<'a> {
             },
         );
         Some(())
+        */
     }
 }

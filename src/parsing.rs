@@ -32,6 +32,7 @@ pub enum NodeExpression {
     IntLiteral(i32),
     Assignment(String, Box<NodeExpression>),
     Construction(String, Option<String>, Vec<NodeExpression>),
+    FreeVariable,
     Output(Box<NodeExpression>, String),
 }
 
@@ -78,6 +79,8 @@ impl<'a> Parser<&'a [u8]> for ExprParser {
                 // Assignment
                 (parse_identifier(), ws(tag("=")), ws(parse_expr()))
                     .map(|(name, _, expr)| NodeExpression::Assignment(name, Box::new(expr))),
+                // Null
+                ws(tag("NULL")).map(|_| NodeExpression::FreeVariable),
                 // Identifier
                 parse_identifier().map(NodeExpression::Identifier),
                 // Float literal
@@ -108,7 +111,7 @@ enum Value {
     Float(f32),
     Int(i32),
     NodeRef(NodeRef),
-    ValueRef(ValueRef),
+    ValueRef(Option<ValueRef>),
 }
 
 fn process_node_expr(
@@ -131,7 +134,7 @@ fn process_node_expr(
                 .map(|expr| {
                     let _arg = process_node_expr(expr, state, graph)?;
                     match _arg {
-                        Value::ValueRef(vr) => Ok(Some(vr)),
+                        Value::ValueRef(vr) => Ok(vr),
                         _ => return Err(()),
                     }
                 })
@@ -171,11 +174,12 @@ fn process_node_expr(
                 .position(|outp| outp.name == output_name)
                 .ok_or(())?;
 
-            Ok(Value::ValueRef(ValueRef {
+            Ok(Value::ValueRef(Some(ValueRef {
                 node: node_ref,
                 output_index: output_ind,
-            }))
+            })))
         }
+        NodeExpression::FreeVariable => Ok(Value::ValueRef(None)),
     }
 }
 

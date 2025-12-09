@@ -1,0 +1,4 @@
+R = Constant: 0.8().val
+G = Constant: 0.4().val
+Col = Vec3(R, G, NULL).val
+Out(Col)

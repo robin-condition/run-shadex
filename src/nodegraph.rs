@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct NodeRef {
     id: usize,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct ValueRef {
     pub node: NodeRef,
     pub output_index: usize,
@@ -18,13 +18,13 @@ pub enum NodeTypeRef {
     Out,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PrimitiveType {
     F32,
     I32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValueType {
     pub inputs: HashMap<String, Box<ValueType>>,
     pub output: PrimitiveType,
