@@ -4,8 +4,18 @@ use rpds::HashTrieMap;
 
 use crate::nodegraph::{NodeGraph, NodeRef, NodeTypeRef, ValueRef};
 
+pub mod value_reprs;
+
 pub struct Executor<'a> {
     pub graph: &'a NodeGraph,
+}
+
+pub struct SinglePrimitiveComputationResult<T: Copy> {
+    val: T
+}
+
+pub struct MultiPrimitiveComputationResult<T: Copy> {
+
 }
 
 struct FunctionRepresentation {
@@ -29,41 +39,7 @@ struct GPUFragShader {
     pub bindings: (),   // Buh
 }
 
-enum ParameterValueSet {
-    I32Range([i32; 2]),
 
-    I32List(Vec<i32>),
-    F32List(Vec<f32>),
-
-    FnList(Vec<FunctionRepresentation>),
-}
-
-impl ParameterValueSet {
-    fn cardinality(&self) -> u64 {
-        match self {
-            ParameterValueSet::I32Range(bounds) => (bounds[1] - bounds[0]) as u64,
-            ParameterValueSet::I32List(items) => items.len() as u64,
-            ParameterValueSet::F32List(items) => items.len() as u64,
-            ParameterValueSet::FnList(function_representations) => {
-                function_representations.len() as u64
-            }
-        }
-    }
-}
-
-struct InputSet {
-    params: HashMap<String, ParameterValueSet>,
-}
-
-impl InputSet {
-    pub fn cardinality(&self) -> u64 {
-        self.params
-            .values()
-            .into_iter()
-            .map(ParameterValueSet::cardinality)
-            .product()
-    }
-}
 
 enum ComputationRepresentation {
     // Constant -- need? distinction between uniform buffer and CPU-side variable
