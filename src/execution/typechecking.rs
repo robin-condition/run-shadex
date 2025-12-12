@@ -1,5 +1,5 @@
 use core::panic;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::nodegraph::{NodeGraph, NodeRef, NodeTypeRef, ValueRef, ValueType};
 
@@ -49,6 +49,11 @@ pub struct OutputPromotion {
     // What additional arguments were added by the typechecker that are not used in computation?
     pub added_constant_wrt: HashMap<String, ValueType>,
 
+    // Which arguments are underspecified (do not appear in the specification for the input)?
+    // This will be a subset of types_from_output and does not really represent an argument source,
+    // it's just some bookkeeping.
+    pub underspecified_args: HashSet<String>,
+
     // Cast necessary? Leaving off for now.
     pub cast: (),
 }
@@ -87,6 +92,14 @@ impl NodeGraphFormalTypeAnalysis {
                         .map(|(a, b)| (a.clone(), (**b).clone()))
                         .collect(),
                     added_constant_wrt: HashMap::new(),
+                    underspecified_args: real_output
+                        .formal_type
+                        .inputs
+                        .iter()
+                        .map(|(a, _)| a)
+                        .filter(|name| !specd_input_type.inputs.contains_key(*name))
+                        .map(String::clone)
+                        .collect(),
                     cast: (),
                 };
                 // The actual input type must have at least all the arguments of the source value.

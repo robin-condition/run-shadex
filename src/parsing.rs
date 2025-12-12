@@ -184,8 +184,10 @@ fn process_node_expr(
     }
 }
 
-pub fn construct_node_graph(types: TypeUniverse, exprs: Vec<NodeExpression>) -> Result<NodeGraph, ()> {
-
+pub fn construct_node_graph(
+    types: TypeUniverse,
+    exprs: Vec<NodeExpression>,
+) -> Result<NodeGraph, ()> {
     let mut parse_state = ParseState {
         named_vars: HashMap::new(),
     };

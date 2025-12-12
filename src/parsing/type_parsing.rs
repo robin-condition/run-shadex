@@ -11,7 +11,9 @@ use nom::{
     sequence::{self, delimited, preceded, separated_pair, terminated},
 };
 
-use crate::nodegraph::{InputInfo, NodeTypeInfo, OutputInfo, PrimitiveType, TypeUniverse, ValueType};
+use crate::nodegraph::{
+    InputInfo, NodeTypeInfo, OutputInfo, PrimitiveType, TypeUniverse, ValueType,
+};
 
 use super::{parse_identifier, ws};
 
@@ -79,29 +81,37 @@ fn parse_arg_type<'a>() -> impl Parser<&'a [u8], Output = ValueType, Error = Err
     ))
 }
 
-pub fn parse_sugar_fn_type<'a>() -> impl Parser<&'a [u8], Output = ValueType, Error = Error<&'a [u8]>> {
+pub fn parse_sugar_fn_type<'a>()
+-> impl Parser<&'a [u8], Output = ValueType, Error = Error<&'a [u8]>> {
     ws(alt((
         parse_primitive_type().map(primitive_to_constant_fn),
-        parse_fn_type()
+        parse_fn_type(),
     )))
 }
 
-
 // Node types
 
-fn parse_named_value_type<'a>() -> impl Parser<&'a [u8], Output = (String, ValueType), Error = Error<&'a [u8]>> {
+fn parse_named_value_type<'a>()
+-> impl Parser<&'a [u8], Output = (String, ValueType), Error = Error<&'a [u8]>> {
     separated_pair(ws(parse_identifier()), ws(tag("@")), parse_sugar_fn_type())
 }
 
-fn parse_node_type_declaration<'a>() -> impl Parser<&'a [u8], Output = NodeTypeInfo, Error = Error<&'a [u8]>> {
-    let inputs_parser = separated_list0(ws(tag(";")), parse_named_value_type().map(|(n, content)| InputInfo {
-        name: n,
-        value_type: Box::new(content),
-    }));
-    let outputs_parser = separated_list0(ws(tag(";")), parse_named_value_type().map(|(n, content)| OutputInfo {
-        name: n,
-        value_type: Box::new(content),
-    }));
+fn parse_node_type_declaration<'a>()
+-> impl Parser<&'a [u8], Output = NodeTypeInfo, Error = Error<&'a [u8]>> {
+    let inputs_parser = separated_list0(
+        ws(tag(";")),
+        parse_named_value_type().map(|(n, content)| InputInfo {
+            name: n,
+            value_type: Box::new(content),
+        }),
+    );
+    let outputs_parser = separated_list0(
+        ws(tag(";")),
+        parse_named_value_type().map(|(n, content)| OutputInfo {
+            name: n,
+            value_type: Box::new(content),
+        }),
+    );
 
     let fn_name = ws(parse_identifier());
 
@@ -109,10 +119,15 @@ fn parse_node_type_declaration<'a>() -> impl Parser<&'a [u8], Output = NodeTypeI
 
     let assignment = separated_pair(fn_name, ws(tag("=")), fn_details);
 
-    assignment.map(|(name, (inputs, outputs))| NodeTypeInfo { name: name, inputs, outputs })
+    assignment.map(|(name, (inputs, outputs))| NodeTypeInfo {
+        name: name,
+        inputs,
+        outputs,
+    })
 }
 
-pub fn parse_node_type_declarations<'a>() -> impl Parser<&'a [u8], Output = Vec<NodeTypeInfo>, Error = Error<&'a [u8]>> {
+pub fn parse_node_type_declarations<'a>()
+-> impl Parser<&'a [u8], Output = Vec<NodeTypeInfo>, Error = Error<&'a [u8]>> {
     many0(ws(parse_node_type_declaration()))
 }
 

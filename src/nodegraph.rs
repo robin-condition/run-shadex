@@ -62,9 +62,11 @@ pub struct TypeUniverse {
 
 impl TypeUniverse {
     pub fn new() -> Self {
-        Self { node_types: HashMap::new(), next_unclaimed_id: 0 }
+        Self {
+            node_types: HashMap::new(),
+            next_unclaimed_id: 0,
+        }
     }
-
 
     pub fn create_new_type(&mut self, type_info: NodeTypeInfo) -> NodeTypeRef {
         let id = self.next_unclaimed_id;
