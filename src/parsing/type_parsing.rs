@@ -5,14 +5,14 @@ use nom::{
     branch::alt,
     bytes::tag,
     character::complete::alphanumeric1,
-    combinator::{eof, not, recognize},
+    combinator::{eof, not, opt, recognize},
     error::Error,
     multi::{many0, separated_list0, separated_list1},
     sequence::{self, delimited, preceded, separated_pair, terminated},
 };
 
 use crate::nodegraph::{
-    InputInfo, NodeTypeInfo, OutputInfo, PrimitiveType, TypeUniverse, ValueType,
+    InputInfo, NodeTypeInfo, OutputInfo, PrimitiveType, TypeUniverse, U32Boundedness, ValueType,
 };
 
 use super::{parse_identifier, ws};
@@ -55,11 +55,30 @@ fn total_tag<'a>(s: &str) -> impl Parser<&'a [u8], Output = &'a [u8], Error = Er
     terminated(tag(s), not(recognize(alphanumeric1)))
 }
 
+fn parse_u32_bound<'a>() -> impl Parser<&'a [u8], Output = u32, Error = Error<&'a [u8]>> {
+delimited(
+                ws(tag("[")),
+                nom::character::complete::u32,
+                ws(tag("]")),
+            )
+}
+
 fn parse_primitive_type<'a>()
 -> impl Parser<&'a [u8], Output = PrimitiveType, Error = Error<&'a [u8]>> {
     ws(alt((
         total_tag("i32").map(|_| PrimitiveType::I32),
         total_tag("f32").map(|_| PrimitiveType::F32),
+        (
+            total_tag("u32"),
+            opt(parse_u32_bound()),
+        )
+            .map(|(_, bd)| {
+                PrimitiveType::U32(bd.map_or(
+                    U32Boundedness::Unbounded,
+                    crate::nodegraph::U32Boundedness::Bounded,
+                ))
+            }),
+        parse_u32_bound().map(|num| PrimitiveType::U32(U32Boundedness::Bounded(num)))
     )))
 }
 

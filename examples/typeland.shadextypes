@@ -1,7 +1,7 @@
-Vec3 = x @ f32; y @ f32; z @ f32 => val @ comp: i32 -> f32
+Vec3 = x @ f32; y @ f32; z @ f32 => val @ comp: u32[3] -> f32
 
 Constant = => val @ f32
 
 AddF = a @ f32; b @ f32 => val @ f32
 
-Out = val @ x: i32, y: i32, comp: i32 -> f32 =>
+Out = val @ x: u32, y: u32, comp: [3] -> f32 =>

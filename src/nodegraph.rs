@@ -17,9 +17,16 @@ pub enum NodeTypeRef {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum U32Boundedness {
+    Unbounded,
+    Bounded(u32),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PrimitiveType {
     F32,
     I32,
+    U32(U32Boundedness),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

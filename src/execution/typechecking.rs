@@ -3,6 +3,12 @@ use std::collections::{HashMap, HashSet};
 
 use crate::nodegraph::{NodeGraph, NodeRef, NodeTypeRef, ValueRef, ValueType};
 
+pub struct ValueTypeProperties {
+    pub allowed_shader_fn_arg: bool,
+    pub allowed_shader_uniform_arg: bool,
+    pub allowed_texture: bool,
+}
+
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct NodeInputReference {
     pub source_node: NodeRef,
