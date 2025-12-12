@@ -61,13 +61,15 @@ impl<'a> Executor<'a> {
     }
 
     fn get_output_valueref(&self) -> Option<ValueRef> {
+        /*
         self.graph.iter_nodes().find_map(|(_, nod)| {
             if nod.node_type == NodeTypeRef::Out {
                 nod.inputs[0]
             } else {
                 None
             }
-        })
+        })*/
+        panic!()
     }
     pub fn execute(&mut self) -> Option<()> {
         let outval = self.get_output_valueref()?;

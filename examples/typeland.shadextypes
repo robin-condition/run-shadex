@@ -1,0 +1,5 @@
+Vec3 = x @ f32; y @ f32; z @ f32 => val @ comp: i32 -> f32
+
+Constant = => val @ f32
+
+Out = val @ x: i32, y: i32, comp: i32 -> f32 =>

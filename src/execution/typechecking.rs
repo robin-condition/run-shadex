@@ -80,7 +80,12 @@ impl NodeGraphFormalTypeAnalysis {
         let inp_notes = match provided_output_type {
             Some(real_output) => {
                 let mut op = OutputPromotion {
-                    types_from_output: real_output.formal_type.inputs.iter().map(|(a,b)| (a.clone(), (**b).clone())).collect(),
+                    types_from_output: real_output
+                        .formal_type
+                        .inputs
+                        .iter()
+                        .map(|(a, b)| (a.clone(), (**b).clone()))
+                        .collect(),
                     added_constant_wrt: HashMap::new(),
                     cast: (),
                 };
@@ -263,7 +268,7 @@ impl NodeGraphFormalTypeAnalysis {
         };
         let output: Vec<(NodeRef, &crate::nodegraph::Node)> = graph
             .iter_nodes()
-            .filter(|(a, b)| b.node_type == NodeTypeRef::Out)
+            .filter(|(a, b)| graph.types.node_types.get(&b.node_type).unwrap().name == "Out")
             .collect();
         for i in output {
             analysis.analyze_single_input(

@@ -1,0 +1,132 @@
+use std::{collections::HashMap, process::Output};
+
+use nom::{
+    Parser,
+    branch::alt,
+    bytes::tag,
+    character::complete::alphanumeric1,
+    combinator::{eof, not, recognize},
+    error::Error,
+    multi::{many0, separated_list0, separated_list1},
+    sequence::{self, delimited, preceded, separated_pair, terminated},
+};
+
+use crate::nodegraph::{InputInfo, NodeTypeInfo, OutputInfo, PrimitiveType, TypeUniverse, ValueType};
+
+use super::{parse_identifier, ws};
+
+pub struct FnTypeParser;
+
+impl<'a> Parser<&'a [u8]> for FnTypeParser {
+    type Output = ValueType;
+
+    type Error = Error<&'a [u8]>;
+
+    fn process<OM: nom::OutputMode>(
+        &mut self,
+        input: &'a [u8],
+    ) -> nom::PResult<OM, &'a [u8], Self::Output, Self::Error> {
+        let argset_parser = alt((
+            (ws(tag("(")), ws(tag(")"))).map(|_| HashMap::<String, Box<ValueType>>::new()),
+            separated_list1(ws(tag(",")), parse_named_arg_type())
+                .map(|g| g.into_iter().map(|(a, b)| (a, Box::new(b))).collect()),
+        ));
+
+        let mut parser =
+            separated_pair(argset_parser, ws(tag("->")), parse_primitive_type()).map(|(a, b)| {
+                ValueType {
+                    inputs: a,
+                    output: b,
+                }
+            });
+
+        parser.process::<OM>(input)
+    }
+}
+
+fn parse_named_arg_type<'a>()
+-> impl Parser<&'a [u8], Output = (String, ValueType), Error = Error<&'a [u8]>> {
+    separated_pair(parse_identifier(), ws(tag(":")), parse_arg_type())
+}
+
+fn total_tag<'a>(s: &str) -> impl Parser<&'a [u8], Output = &'a [u8], Error = Error<&'a [u8]>> {
+    terminated(tag(s), not(recognize(alphanumeric1)))
+}
+
+fn parse_primitive_type<'a>()
+-> impl Parser<&'a [u8], Output = PrimitiveType, Error = Error<&'a [u8]>> {
+    ws(alt((
+        total_tag("i32").map(|_| PrimitiveType::I32),
+        total_tag("f32").map(|_| PrimitiveType::F32),
+    )))
+}
+
+fn primitive_to_constant_fn(typ: PrimitiveType) -> ValueType {
+    ValueType {
+        inputs: HashMap::new(),
+        output: typ,
+    }
+}
+
+fn parse_fn_type() -> FnTypeParser {
+    FnTypeParser
+}
+
+fn parse_arg_type<'a>() -> impl Parser<&'a [u8], Output = ValueType, Error = Error<&'a [u8]>> {
+    alt((
+        parse_primitive_type().map(primitive_to_constant_fn),
+        delimited(ws(tag("(")), parse_fn_type(), ws(tag(")"))),
+    ))
+}
+
+pub fn parse_sugar_fn_type<'a>() -> impl Parser<&'a [u8], Output = ValueType, Error = Error<&'a [u8]>> {
+    ws(alt((
+        parse_primitive_type().map(primitive_to_constant_fn),
+        parse_fn_type()
+    )))
+}
+
+
+// Node types
+
+fn parse_named_value_type<'a>() -> impl Parser<&'a [u8], Output = (String, ValueType), Error = Error<&'a [u8]>> {
+    separated_pair(ws(parse_identifier()), ws(tag("@")), parse_sugar_fn_type())
+}
+
+fn parse_node_type_declaration<'a>() -> impl Parser<&'a [u8], Output = NodeTypeInfo, Error = Error<&'a [u8]>> {
+    let inputs_parser = separated_list0(ws(tag(";")), parse_named_value_type().map(|(n, content)| InputInfo {
+        name: n,
+        value_type: Box::new(content),
+    }));
+    let outputs_parser = separated_list0(ws(tag(";")), parse_named_value_type().map(|(n, content)| OutputInfo {
+        name: n,
+        value_type: Box::new(content),
+    }));
+
+    let fn_name = ws(parse_identifier());
+
+    let fn_details = separated_pair(inputs_parser, ws(tag("=>")), outputs_parser);
+
+    let assignment = separated_pair(fn_name, ws(tag("=")), fn_details);
+
+    assignment.map(|(name, (inputs, outputs))| NodeTypeInfo { name: name, inputs, outputs })
+}
+
+pub fn parse_node_type_declarations<'a>() -> impl Parser<&'a [u8], Output = Vec<NodeTypeInfo>, Error = Error<&'a [u8]>> {
+    many0(ws(parse_node_type_declaration()))
+}
+
+pub fn parse_type_universe(content: &str) -> Result<TypeUniverse, ()> {
+    let mut parser = terminated(parse_node_type_declarations(), eof);
+    let res = match parser.parse_complete(content.as_bytes()) {
+        Ok((_, ok)) => ok,
+        Err(a) => return panic!("{a}"),
+    };
+
+    let mut uni = TypeUniverse::new();
+    for i in res {
+        uni.create_new_type(i);
+    }
+
+    Ok(uni)
+}

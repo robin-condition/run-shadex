@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+pub mod type_parsing;
 
 use nom::{
     IResult, Parser,
@@ -140,7 +141,7 @@ fn process_node_expr(
                 })
                 .collect();
 
-            let (&type_ref, _) = graph
+            let (type_ref, _) = graph
                 .types
                 .node_types
                 .iter()
@@ -148,7 +149,7 @@ fn process_node_expr(
                 .ok_or(())?;
 
             let node = Node {
-                node_type: type_ref,
+                node_type: type_ref.clone(),
                 inputs: args?,
                 extra_data: data,
             };
@@ -183,106 +184,7 @@ fn process_node_expr(
     }
 }
 
-pub fn construct_node_graph(exprs: Vec<NodeExpression>) -> Result<NodeGraph, ()> {
-    let types = TypeUniverse {
-        node_types: [
-            (
-                NodeTypeRef::Constant,
-                NodeTypeInfo {
-                    name: "Constant",
-                    inputs: vec![],
-                    outputs: vec![OutputInfo {
-                        name: "val".to_string(),
-                        value_type: Box::new(ValueType {
-                            inputs: HashMap::new(),
-                            output: PrimitiveType::F32,
-                        }),
-                    }],
-                },
-            ),
-            (
-                NodeTypeRef::Out,
-                NodeTypeInfo {
-                    name: "Out",
-                    inputs: vec![InputInfo {
-                        name: "color".to_string(),
-                        value_type: Box::new(ValueType {
-                            inputs: [
-                                (
-                                    "x".to_string(),
-                                    Box::new(ValueType {
-                                        inputs: [].into(),
-                                        output: PrimitiveType::I32,
-                                    }),
-                                ),
-                                (
-                                    "y".to_string(),
-                                    Box::new(ValueType {
-                                        inputs: [].into(),
-                                        output: PrimitiveType::I32,
-                                    }),
-                                ),
-                                (
-                                    "component".to_string(),
-                                    Box::new(ValueType {
-                                        inputs: [].into(),
-                                        output: PrimitiveType::I32,
-                                    }),
-                                ),
-                            ]
-                            .into(),
-                            output: PrimitiveType::F32,
-                        }),
-                    }],
-                    outputs: vec![],
-                },
-            ),
-            (
-                NodeTypeRef::Vec3,
-                NodeTypeInfo {
-                    name: "Vec3",
-                    inputs: vec![
-                        InputInfo {
-                            name: "x".to_string(),
-                            value_type: Box::new(ValueType {
-                                inputs: [].into(),
-                                output: PrimitiveType::F32,
-                            }),
-                        },
-                        InputInfo {
-                            name: "y".to_string(),
-                            value_type: Box::new(ValueType {
-                                inputs: [].into(),
-                                output: PrimitiveType::F32,
-                            }),
-                        },
-                        InputInfo {
-                            name: "z".to_string(),
-                            value_type: Box::new(ValueType {
-                                inputs: [].into(),
-                                output: PrimitiveType::F32,
-                            }),
-                        },
-                    ],
-                    outputs: vec![OutputInfo {
-                        name: "val".to_string(),
-                        value_type: Box::new(ValueType {
-                            inputs: [(
-                                "component".to_string(),
-                                Box::new(ValueType {
-                                    inputs: [].into(),
-                                    output: PrimitiveType::I32,
-                                }),
-                            )]
-                            .into(),
-                            output: PrimitiveType::F32,
-                        }),
-                    }],
-                },
-            ),
-        ]
-        .into(),
-    };
+pub fn construct_node_graph(types: TypeUniverse, exprs: Vec<NodeExpression>) -> Result<NodeGraph, ()> {
 
     let mut parse_state = ParseState {
         named_vars: HashMap::new(),

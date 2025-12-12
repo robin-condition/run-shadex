@@ -11,11 +11,9 @@ pub struct ValueRef {
     pub output_index: usize,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum NodeTypeRef {
-    Constant,
-    Vec3,
-    Out,
+    Custom(usize),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -44,7 +42,7 @@ pub struct OutputInfo {
 
 #[derive(Debug)]
 pub struct NodeTypeInfo {
-    pub name: &'static str,
+    pub name: String,
     pub inputs: Vec<InputInfo>,
     pub outputs: Vec<OutputInfo>,
 }
@@ -59,6 +57,22 @@ pub struct Node {
 #[derive(Debug)]
 pub struct TypeUniverse {
     pub node_types: HashMap<NodeTypeRef, NodeTypeInfo>,
+    next_unclaimed_id: usize,
+}
+
+impl TypeUniverse {
+    pub fn new() -> Self {
+        Self { node_types: HashMap::new(), next_unclaimed_id: 0 }
+    }
+
+
+    pub fn create_new_type(&mut self, type_info: NodeTypeInfo) -> NodeTypeRef {
+        let id = self.next_unclaimed_id;
+        self.next_unclaimed_id = self.next_unclaimed_id + 1;
+        let typeref = NodeTypeRef::Custom(id);
+        self.node_types.insert(typeref.clone(), type_info);
+        typeref
+    }
 }
 
 #[derive(Debug)]
