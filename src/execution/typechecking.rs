@@ -1,12 +1,34 @@
 use core::panic;
 use std::collections::{HashMap, HashSet};
 
-use crate::nodegraph::{NodeGraph, NodeRef, NodeTypeRef, ValueRef, ValueType};
+use crate::nodegraph::{NodeGraph, NodeRef, NodeTypeRef, PrimitiveType, ValueRef, ValueType};
 
+#[derive(Default)]
 pub struct ValueTypeProperties {
-    pub allowed_shader_fn_arg: bool,
-    pub allowed_shader_uniform_arg: bool,
-    pub allowed_texture: bool,
+    pub can_index_texture_axis: bool,
+    pub can_index_vector: bool,
+}
+
+fn assess_known_constant_type(typ: PrimitiveType) -> ValueTypeProperties {
+    match typ {
+        crate::nodegraph::PrimitiveType::F32 => Default::default(),
+        crate::nodegraph::PrimitiveType::I32 => Default::default(),
+        crate::nodegraph::PrimitiveType::U32(u32_boundedness) => match u32_boundedness {
+            crate::nodegraph::U32Boundedness::Unbounded => Default::default(),
+            crate::nodegraph::U32Boundedness::Bounded(n) => ValueTypeProperties {
+                can_index_texture_axis: n <= 1024u32,
+                can_index_vector: n <= 4,
+            },
+        },
+    }
+}
+
+pub fn assess_value_type(typ: &ValueType) -> ValueTypeProperties {
+    if typ.inputs.is_empty() {
+        return assess_known_constant_type(typ.output);
+    }
+
+    ValueTypeProperties::default()
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
