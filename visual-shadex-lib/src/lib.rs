@@ -4,7 +4,7 @@ use egui::{Rect, Shape, Ui, Vec2, epaint::CircleShape, layers};
 use shadex_backend::nodegraph::{NodeGraph, NodeRef};
 
 mod helpers;
-mod vnode_templates;
+mod node_templates;
 
 pub enum VisualNodeConfigurationEntry {}
 

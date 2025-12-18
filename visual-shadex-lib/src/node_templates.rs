@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use shadex_backend::nodegraph::{PrimitiveType, U32Boundedness, ValueType};
+use shadex_backend::nodegraph::{NodeTypeInfo, PrimitiveType, U32Boundedness, ValueType};
 
+// TODO: Replace this with some kind of "template-reduction-time" expression
 type TemplatePlaceholderIdentifier = String;
 
 pub enum TemplatePlaceholder {
@@ -10,6 +11,8 @@ pub enum TemplatePlaceholder {
     ArgumentName(String),
     ValueType(ValueType),
     ArgsList(Vec<(String, ValueType)>),
+
+    MiscellaneousF32s(Vec<f32>),
 }
 
 pub enum U32BoundednessTemplate {
