@@ -1,0 +1,13 @@
+[package]
+name = "shadex-gui"
+version = "0.1.0"
+edition = "2024"
+default-run = "shadex-gui"
+
+[dependencies]
+eframe = { version = "0.33.3", features = ["wgpu"] }
+egui = "0.33.3"
+env_logger = "0.11.8"
+nom = "8.0.0"
+paste = "1.0.15"
+rpds = "1.2.0"

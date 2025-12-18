@@ -1,9 +1,3 @@
-[package]
-name = "run-shadex"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-nom = "8.0.0"
-rpds = "1.2.0"
-rspirv = "0.12.0"
+[workspace]
+resolver = "3"
+members = ["shadex-backend", "shadex-gui"]
