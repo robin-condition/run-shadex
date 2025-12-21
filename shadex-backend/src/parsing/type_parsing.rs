@@ -146,7 +146,7 @@ pub fn parse_type_universe(content: &str) -> Result<TypeUniverse, ()> {
     let mut parser = terminated(parse_node_type_declarations(), eof);
     let res = match parser.parse_complete(content.as_bytes()) {
         Ok((_, ok)) => ok,
-        Err(a) => return panic!("{a}"),
+        Err(a) => panic!("{a}"),
     };
 
     let mut uni = TypeUniverse::new();
