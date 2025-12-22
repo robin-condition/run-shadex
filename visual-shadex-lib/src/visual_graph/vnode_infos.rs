@@ -6,15 +6,18 @@ use shadex_backend::nodegraph::{
     NodeTypeInfo, NodeTypeRef, OutputInfo, PrimitiveType, TypeUniverse, ValueType,
 };
 
+use crate::visual_graph::VNodeOutputRef;
+
 pub trait VisualNodeInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool;
-    fn get_shadex_type(&self, type_universe: &mut TypeUniverse) -> NodeTypeRef;
+    fn get_shadex_type(&self) -> NodeTypeInfo;
     fn get_name(&self) -> &str;
 }
 
 pub struct VisualNode {
     pub data: Box<dyn VisualNodeInfo>,
     pub position: Vec2,
+    pub input_sources: Vec<Option<VNodeOutputRef>>
 }
 
 impl VisualNode {
@@ -119,15 +122,15 @@ impl VisualNodeInfo for ConstantInfo {
         .changed()
     }
 
-    fn get_shadex_type(&self, type_universe: &mut TypeUniverse) -> NodeTypeRef {
-        type_universe.create_new_type(NodeTypeInfo {
+    fn get_shadex_type(&self) -> NodeTypeInfo {
+        NodeTypeInfo {
             name: "test".to_string(),
             inputs: Vec::new(),
             outputs: vec![OutputInfo {
                 name: "value".to_string(),
                 value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
             }],
-        })
+        }
     }
 
     fn get_name(&self) -> &str {
