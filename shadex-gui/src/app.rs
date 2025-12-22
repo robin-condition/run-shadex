@@ -1,5 +1,5 @@
 use egui::{Pos2, Rect, Vec2};
-use visual_shadex_lib::ViewState;
+use visual_shadex_lib::{ViewState, make_constant_node};
 
 pub struct App {
     vs: ViewState,
@@ -10,6 +10,7 @@ impl App {
         Self {
             vs: ViewState {
                 rect: Rect::from_min_size(Pos2::ZERO, Vec2::splat(200f32)),
+                node: make_constant_node(),
             },
         }
     }
