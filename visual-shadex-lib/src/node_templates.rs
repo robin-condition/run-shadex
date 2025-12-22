@@ -143,15 +143,14 @@ impl ShapedValueTypeTemplate {
     }
 }
 
-
 pub struct TemplatedInputInfo {
     name: StringTemplate,
-    val_type: ValueTypeTemplate
+    val_type: ValueTypeTemplate,
 }
 
 pub struct TemplatedOutputInfo {
     name: StringTemplate,
-    val_type: ValueTypeTemplate
+    val_type: ValueTypeTemplate,
 }
 
 pub struct TemplatedNodeTypeInfo {

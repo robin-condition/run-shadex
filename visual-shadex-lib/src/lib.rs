@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
-use egui::{Rect, Shape, Ui, Vec2, epaint::CircleShape, layers};
+use egui::{Rect, Shape, Ui, Vec2, epaint::CircleShape, layers, vec2};
 use shadex_backend::nodegraph::{NodeGraph, NodeRef};
+
+use crate::vnode_infos::{ConstantInfo, VisualNode};
 
 mod helpers;
 mod node_templates;
+mod vnode_infos;
 
 pub enum VisualNodeConfigurationEntry {}
 
@@ -62,8 +65,13 @@ pub struct ViewState {
 pub fn visual_shadex_test(ui: &mut egui::Ui, viewstate: &mut ViewState) {
     _ = ui.button("Hello from visual shadex lib!");
     let mut vrect = viewstate.rect;
+    let mut vnode = VisualNode {
+        data: Box::new(ConstantInfo::new(2f32)),
+        position: vec2(0f32, 0f32),
+    };
     egui::containers::Scene::new().show(ui, &mut vrect, |ui| {
         _ = ui.button("WOOO!");
+        vnode.show_box(ui);
     });
 
     viewstate.rect = vrect;

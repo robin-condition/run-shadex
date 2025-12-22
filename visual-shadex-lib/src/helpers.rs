@@ -1,6 +1,6 @@
 use egui::{Align, Color32, FontId, Painter, Pos2, epaint::TextShape, text::LayoutJob, vec2};
 
-fn draw_text(
+pub fn draw_text(
     painter: &Painter,
     text: String,
     pos: Pos2,

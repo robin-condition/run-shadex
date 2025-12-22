@@ -35,6 +35,15 @@ pub struct ValueType {
     pub output: PrimitiveType,
 }
 
+impl ValueType {
+    pub fn primitive(prim: PrimitiveType) -> ValueType {
+        ValueType {
+            inputs: HashMap::new(),
+            output: prim,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct InputInfo {
     pub name: String,
