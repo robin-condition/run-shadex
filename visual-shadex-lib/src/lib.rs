@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use egui::{Rect, Sense, Shape, Ui, Vec2, emath::TSTransform, epaint::CircleShape, layers, vec2};
+use egui::{Pos2, Rect, Sense, Shape, Ui, Vec2, emath::TSTransform, epaint::CircleShape, layers, vec2};
 use shadex_backend::nodegraph::{NodeGraph, NodeRef};
 
 use crate::visual_graph::{
@@ -17,6 +17,7 @@ pub struct ViewState {
 
 pub struct InteractionState {
     pub dragging: DraggingState,
+    pub prev_mouse_pos: Pos2,
 }
 
 pub enum DraggingState {
@@ -81,11 +82,10 @@ pub fn visual_shadex_test(
 ) {
     _ = ui.button("Hello from visual shadex lib!");
     let mut vrect = viewstate.rect;
-    egui::containers::Scene::new()
-        .show(ui, &mut vrect, |ui| {
-            _ = ui.button("WOOO!");
-            graph.show(ui, mode);
-        });
+    egui::containers::Scene::new().show(ui, &mut vrect, |ui| {
+        _ = ui.button("WOOO!");
+        graph.show(ui, mode);
+    });
 
     viewstate.rect = vrect;
 }

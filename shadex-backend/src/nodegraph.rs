@@ -52,11 +52,13 @@ impl Display for ValueType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.inputs.is_empty() {
             write!(f, "{}", self.output)
-        }
-        else {
+        } else {
             let mut res = write!(f, "(");
-            for (n, v) in &self.inputs {
-                res = res.and_then(|_| write!(f, "{}: {}", n, v));
+            let mut inps: Vec<(&String, &Box<ValueType>)> = self.inputs.iter().collect();
+            inps.sort_by(|a, b| a.0.cmp(b.0));
+            res = res.and_then(|_| write!(f, "{}: {}", inps[0].0, inps[0].1));
+            for (n, v) in inps.into_iter().skip(1) {
+                res = res.and_then(|_| write!(f, ", {}: {}", n, v));
             }
             res = res.and_then(|_| write!(f, " -> {})", self.output));
             res

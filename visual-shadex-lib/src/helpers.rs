@@ -1,4 +1,9 @@
-use egui::{Align, Color32, FontId, Painter, Pos2, Shape, epaint::{PathShape, PathStroke, TextShape}, text::LayoutJob, vec2};
+use egui::{
+    Align, Color32, FontId, Painter, Pos2, Shape,
+    epaint::{PathShape, PathStroke, TextShape},
+    text::LayoutJob,
+    vec2,
+};
 
 pub fn draw_text(
     painter: &Painter,

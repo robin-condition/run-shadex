@@ -4,7 +4,9 @@ use std::any;
 use egui::{Color32, Pos2, Stroke, ahash::HashMap};
 pub use vnode_infos::{VisualNode, VisualNodeInfo, add::AddInfo, constant::ConstantInfo};
 
-use crate::{DraggingState, InteractionState, helpers::draw_line};
+use crate::{
+    DraggingState, InteractionState, helpers::draw_line, visual_graph::vnode_infos::INITIALIZATIONS,
+};
 
 #[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
 pub struct VNodeId(usize);
@@ -51,11 +53,7 @@ impl VisualNodeGraph {
         self.nodes.get_mut(id).unwrap()
     }
 
-    pub fn show(
-        &mut self,
-        ui: &mut egui::Ui,
-        mode: &mut InteractionState,
-    ) -> bool {
+    pub fn show(&mut self, ui: &mut egui::Ui, mode: &mut InteractionState) -> bool {
         let mut changed = false;
 
         // Make a placeholder for the lines below all the nodes
@@ -65,9 +63,13 @@ impl VisualNodeGraph {
 
         // Make sure that if nothing is hovered, it will be treated as a line-to-cursor.
         match &mode.dragging {
-            DraggingState::DraggingLineFromInputPort(inp, _) => mode.dragging = DraggingState::DraggingLineFromInputPort(*inp, None),
-            DraggingState::DraggingLineFromOutputPort(_, outp) => mode.dragging = DraggingState::DraggingLineFromOutputPort(None, *outp),
-            _ => ()
+            DraggingState::DraggingLineFromInputPort(inp, _) => {
+                mode.dragging = DraggingState::DraggingLineFromInputPort(*inp, None)
+            }
+            DraggingState::DraggingLineFromOutputPort(_, outp) => {
+                mode.dragging = DraggingState::DraggingLineFromOutputPort(None, *outp)
+            }
+            _ => (),
         };
 
         let mut mouse_pos = None;
@@ -126,6 +128,8 @@ impl VisualNodeGraph {
             self.get_node_mut(&inp.dest).input_ports[inp.input_ind].input_source = None;
         }
 
+        mode.prev_mouse_pos = mouse_pos.or(ui.response().interact_pointer_pos()).unwrap_or(mode.prev_mouse_pos);
+
         let mouse_pos = mouse_pos.unwrap_or_default();
 
         match &mode.dragging {
@@ -149,6 +153,23 @@ impl VisualNodeGraph {
         });
 
         ui.painter().set(lines_shape_id, line_vec);
+
+        
+
+        ui.response().context_menu(|ui| {
+            let pos = mode.prev_mouse_pos;
+            for (n, v) in &INITIALIZATIONS {
+                if ui.button(*n).clicked() {
+                    self.add_node(VisualNode {
+                        data: v(),
+                        position: pos.to_vec2(),
+                        formal_type: None,
+                        input_ports: Vec::new(),
+                        output_ports: Vec::new(),
+                    });
+                }
+            }
+        });
 
         changed
     }

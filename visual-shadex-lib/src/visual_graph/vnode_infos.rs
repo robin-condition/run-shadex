@@ -8,8 +8,8 @@ use shadex_backend::nodegraph::{
     InputInfo, NodeTypeInfo, NodeTypeRef, OutputInfo, PrimitiveType, TypeUniverse, ValueType,
 };
 
-pub mod add;
-pub mod constant;
+pub mod node_types;
+pub use node_types::*;
 
 use crate::{
     InteractionState,
