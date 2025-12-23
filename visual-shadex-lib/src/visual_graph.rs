@@ -80,8 +80,15 @@ impl VisualNodeGraph {
         for n in &mut self.nodes {
             let mut deleted = false;
             changed =
-                n.1.show_box(ui, *n.0, mode, &mut any_drag_stopped, &mut mouse_pos, &mut deleted)
-                    .inner
+                n.1.show_box(
+                    ui,
+                    *n.0,
+                    mode,
+                    &mut any_drag_stopped,
+                    &mut mouse_pos,
+                    &mut deleted,
+                )
+                .inner
                     | changed;
             if deleted {
                 node_to_del = Some(*n.0);
@@ -153,7 +160,9 @@ impl VisualNodeGraph {
             self.get_node_mut(&inp.dest).input_ports[inp.input_ind].input_source = None;
         }
 
-        mode.prev_mouse_pos = mouse_pos.or(ui.response().interact_pointer_pos()).unwrap_or(mode.prev_mouse_pos);
+        mode.prev_mouse_pos = mouse_pos
+            .or(ui.response().interact_pointer_pos())
+            .unwrap_or(mode.prev_mouse_pos);
 
         let mouse_pos = mouse_pos.unwrap_or_default();
 
@@ -178,8 +187,6 @@ impl VisualNodeGraph {
         });
 
         ui.painter().set(lines_shape_id, line_vec);
-
-        
 
         ui.response().context_menu(|ui| {
             let pos = mode.prev_mouse_pos;

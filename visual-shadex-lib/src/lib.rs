@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
-use egui::{Pos2, Rect, Sense, Shape, Ui, Vec2, emath::TSTransform, epaint::CircleShape, layers, vec2};
+use egui::{
+    Pos2, Rect, Sense, Shape, Ui, Vec2, emath::TSTransform, epaint::CircleShape, layers, vec2,
+};
 use shadex_backend::nodegraph::{NodeGraph, NodeRef};
 
 use crate::visual_graph::{
     AddInfo, ConstantInfo, VNodeInputRef, VNodeOutputRef, VisualNode, VisualNodeGraph,
 };
 
+pub mod formal_graph_annotations;
 mod helpers;
 mod node_templates;
 pub mod visual_graph;

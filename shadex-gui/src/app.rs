@@ -19,7 +19,7 @@ impl App {
             graph: make_testing_vnode_graph(),
             mode: InteractionState {
                 dragging: Default::default(),
-                prev_mouse_pos: Default::default()
+                prev_mouse_pos: Default::default(),
             },
         }
     }
