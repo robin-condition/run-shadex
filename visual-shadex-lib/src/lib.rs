@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use egui::{Rect, Shape, Ui, Vec2, epaint::CircleShape, layers, vec2};
+use egui::{Rect, Sense, Shape, Ui, Vec2, emath::TSTransform, epaint::CircleShape, layers, vec2};
 use shadex_backend::nodegraph::{NodeGraph, NodeRef};
 
 use crate::visual_graph::{
@@ -35,13 +35,13 @@ impl DraggingState {
     pub fn hover_inputs(&self) -> bool {
         match self {
             Self::DraggingLineFromInputPort(_, _) => false,
-            _ => true
+            _ => true,
         }
     }
     pub fn hover_outputs(&self) -> bool {
         match self {
             Self::DraggingLineFromOutputPort(_, _) => false,
-            _ => true
+            _ => true,
         }
     }
 }
@@ -81,10 +81,16 @@ pub fn visual_shadex_test(
 ) {
     _ = ui.button("Hello from visual shadex lib!");
     let mut vrect = viewstate.rect;
-    egui::containers::Scene::new().show(ui, &mut vrect, |ui| {
-        _ = ui.button("WOOO!");
-        graph.show(ui, mode);
-    });
+    egui::containers::Scene::new()
+        .sense(Sense::hover())
+        .show(ui, &mut vrect, |ui| {
+            _ = ui.button("WOOO!");
+            let mpos = ui
+                .response()
+                .interact_pointer_pos()
+                .or(ui.response().hover_pos());
+            graph.show(mpos, ui, mode);
+        });
 
     viewstate.rect = vrect;
 }

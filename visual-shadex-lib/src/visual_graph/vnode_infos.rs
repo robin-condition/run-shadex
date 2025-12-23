@@ -11,7 +11,10 @@ use shadex_backend::nodegraph::{
 pub mod add;
 pub mod constant;
 
-use crate::{InteractionState, visual_graph::VNodeOutputRef};
+use crate::{
+    InteractionState,
+    visual_graph::{VNodeId, VNodeInputRef, VNodeOutputRef},
+};
 
 pub trait VisualNodeInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool;
@@ -40,12 +43,22 @@ pub struct VisualNode {
     pub output_ports: Vec<VisualOutputPort>,
 }
 
-fn draw_input_port(ui: &mut egui::Ui, vport: &mut VisualInputPort, port: &InputInfo, mode: &mut InteractionState) {
+fn draw_input_port(
+    ui: &mut egui::Ui,
+    vref: &VNodeInputRef,
+    vport: &mut VisualInputPort,
+    port: &InputInfo,
+    mode: &mut InteractionState,
+    any_drag_stopped: &mut bool,
+    mouse_pos: &mut Option<Pos2>,
+) {
     ui.horizontal(|ui| {
         let (resp, ptr) = ui.allocate_painter(vec2(20f32, 20f32), Sense::hover() | Sense::drag());
         let resp = resp.on_hover_text("Hovering!");
 
-        let color = if resp.contains_pointer() && mode.dragging.hover_inputs() {
+        let hovering = resp.contains_pointer() && mode.dragging.hover_inputs();
+
+        let color = if hovering {
             Color32::WHITE
         } else {
             Color32::RED
@@ -54,25 +67,71 @@ fn draw_input_port(ui: &mut egui::Ui, vport: &mut VisualInputPort, port: &InputI
         ptr.circle_filled(resp.rect.center(), resp.rect.size().x * 0.5f32, color);
         ui.add(Label::new(&port.name).selectable(false));
 
+        if hovering {
+            if let crate::DraggingState::DraggingLineFromOutputPort(_, outref) = &mode.dragging {
+                mode.dragging =
+                    crate::DraggingState::DraggingLineFromOutputPort(Some(*vref), outref.clone());
+            }
+        }
+
         if resp.drag_started() {
-            mode.dragging = crate::DraggingState::DraggingLineFromInputPort(, None)
+            mode.dragging = crate::DraggingState::DraggingLineFromInputPort(vref.clone(), None);
+        }
+
+        *mouse_pos = mouse_pos.or(resp.interact_pointer_pos());
+
+        if resp.drag_stopped() {
+            *any_drag_stopped = true;
         }
 
         vport.pos = resp.rect.center();
     });
 }
 
-fn draw_output_ports(ui: &mut egui::Ui, vports: &mut [VisualOutputPort], ports: &[OutputInfo], mode: &mut InteractionState) {
+fn draw_output_ports(
+    ui: &mut egui::Ui,
+    node_ref: VNodeId,
+    vports: &mut [VisualOutputPort],
+    ports: &[OutputInfo],
+    mode: &mut InteractionState,
+    any_drag_stopped: &mut bool,
+    mouse_pos: &mut Option<Pos2>,
+) {
     for (i, p) in ports.iter().enumerate() {
         ui.horizontal(|ui| {
+            let oref = VNodeOutputRef {
+                source: node_ref,
+                output_ind: i,
+            };
             ui.add(Label::new(&p.name).selectable(false));
 
-            let (resp, ptr) = ui.allocate_painter(vec2(20f32, 20f32), Sense::hover() | Sense::drag());
-            let color = if resp.contains_pointer() && mode.dragging.hover_outputs() {
+            let (resp, ptr) =
+                ui.allocate_painter(vec2(20f32, 20f32), Sense::hover() | Sense::drag());
+
+            let hovering = resp.contains_pointer() && mode.dragging.hover_outputs();
+            let color = if hovering {
                 Color32::WHITE
             } else {
                 Color32::RED
             };
+
+            if hovering {
+                if let crate::DraggingState::DraggingLineFromInputPort(inpref, _) = mode.dragging {
+                    mode.dragging =
+                        crate::DraggingState::DraggingLineFromInputPort(inpref, Some(oref));
+                }
+            }
+
+            if resp.drag_started() {
+                mode.dragging = crate::DraggingState::DraggingLineFromOutputPort(None, oref);
+            }
+
+            *mouse_pos = mouse_pos.or(resp.interact_pointer_pos());
+
+            if resp.drag_stopped() {
+                *any_drag_stopped = true;
+            }
+
             ptr.circle_filled(resp.rect.center(), resp.rect.size().x * 0.5f32, color);
             vports[i].pos = resp.rect.center();
         });
@@ -80,7 +139,14 @@ fn draw_output_ports(ui: &mut egui::Ui, vports: &mut [VisualOutputPort], ports: 
 }
 
 impl VisualNode {
-    pub fn show_box(&mut self, ui: &mut egui::Ui, mode: &mut InteractionState) -> InnerResponse<bool> {
+    pub fn show_box(
+        &mut self,
+        ui: &mut egui::Ui,
+        selfref: VNodeId,
+        mode: &mut InteractionState,
+        any_drag_stopped: &mut bool,
+        mouse_pos: &mut Option<Pos2>,
+    ) -> InnerResponse<bool> {
         let idx = ui.painter().add(Shape::Noop);
         let changed = &mut false;
 
@@ -129,7 +195,18 @@ impl VisualNode {
 
                             if let Some(formal_type) = &self.formal_type {
                                 for (i, p) in formal_type.inputs.iter().enumerate() {
-                                    draw_input_port(ui, &mut self.input_ports[i], p, mode);
+                                    draw_input_port(
+                                        ui,
+                                        &VNodeInputRef {
+                                            dest: selfref,
+                                            input_ind: i,
+                                        },
+                                        &mut self.input_ports[i],
+                                        p,
+                                        mode,
+                                        any_drag_stopped,
+                                        mouse_pos,
+                                    );
                                 }
                             }
                         });
@@ -143,7 +220,15 @@ impl VisualNode {
                             // Do output ports
                             // TODO: Ports selectable.
                             if let Some(formal_type) = &self.formal_type {
-                                draw_output_ports(ui, &mut self.output_ports, &formal_type.outputs, mode);
+                                draw_output_ports(
+                                    ui,
+                                    selfref,
+                                    &mut self.output_ports,
+                                    &formal_type.outputs,
+                                    mode,
+                                    any_drag_stopped,
+                                    mouse_pos,
+                                );
                             }
                         });
                     });
