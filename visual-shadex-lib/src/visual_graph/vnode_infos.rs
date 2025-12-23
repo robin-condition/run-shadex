@@ -148,6 +148,7 @@ impl VisualNode {
         mode: &mut InteractionState,
         any_drag_stopped: &mut bool,
         mouse_pos: &mut Option<Pos2>,
+        deleted: &mut bool,
     ) -> InnerResponse<bool> {
         let idx = ui.painter().add(Shape::Noop);
         let changed = &mut false;
@@ -169,7 +170,7 @@ impl VisualNode {
 
         let inner_resp = ui.scope_builder(
             egui::UiBuilder::new()
-                .sense(Sense::drag())
+                .sense(Sense::click_and_drag())
                 .max_rect(Rect::from_min_size(self.position.to_pos2(), Vec2::INFINITY)),
             |ui| {
                 ui.vertical(|ui| {
@@ -252,6 +253,12 @@ impl VisualNode {
             let delt = response.drag_delta();
             self.position += delt;
         }
+
+        response.context_menu(|ui| {
+            if ui.button("Delete").clicked() {
+                *deleted = true;
+            }
+        });
 
         //helpers::draw_text(painter, text, pos, font_size, halign, valign).galley.rect.width();
 

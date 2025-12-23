@@ -74,12 +74,18 @@ impl VisualNodeGraph {
 
         let mut mouse_pos = None;
 
+        let mut node_to_del = None;
+
         // Draw and update all the nodes
         for n in &mut self.nodes {
+            let mut deleted = false;
             changed =
-                n.1.show_box(ui, *n.0, mode, &mut any_drag_stopped, &mut mouse_pos)
+                n.1.show_box(ui, *n.0, mode, &mut any_drag_stopped, &mut mouse_pos, &mut deleted)
                     .inner
                     | changed;
+            if deleted {
+                node_to_del = Some(*n.0);
+            }
         }
 
         if any_drag_stopped {
@@ -89,6 +95,7 @@ impl VisualNodeGraph {
                 if node.input_ports.len() > inp.input_ind {
                     node.input_ports[inp.input_ind].input_source = Some(*outp);
                 }
+                changed = true;
             }
             if let crate::DraggingState::DraggingLineFromOutputPort(Some(inp), outp) =
                 &mode.dragging
@@ -97,9 +104,27 @@ impl VisualNodeGraph {
                 if node.input_ports.len() > inp.input_ind {
                     node.input_ports[inp.input_ind].input_source = Some(*outp);
                 }
+                changed = true;
             }
 
             mode.dragging = crate::DraggingState::NotDraggingLine;
+        }
+
+        // Delete nodes marked for deletion
+        if let Some(id) = node_to_del {
+            // Remove the node
+            self.nodes.remove(&id);
+
+            // Remove any edges from the node.
+            for n in self.nodes.iter_mut() {
+                for i in n.1.input_ports.iter_mut() {
+                    if let Some(src) = i.input_source {
+                        if src.source == id {
+                            i.input_source = None;
+                        }
+                    }
+                }
+            }
         }
 
         // Compute all the lines and draw them
