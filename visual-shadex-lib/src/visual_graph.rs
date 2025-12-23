@@ -118,10 +118,6 @@ impl VisualNodeGraph {
                     let dest_pos = inp.pos;
                     let source_pos = self.get_node(&outp.source).output_ports[outp.output_ind].pos;
                     line_vec.push(draw_line(source_pos, dest_pos, 100));
-                    /*line_vec.push(egui::Shape::LineSegment {
-                        points: [source_pos, dest_pos],
-                        stroke: Stroke::new(3f32, Color32::WHITE),
-                    });*/
                 }
             }
         }
@@ -130,7 +126,6 @@ impl VisualNodeGraph {
             self.get_node_mut(&inp.dest).input_ports[inp.input_ind].input_source = None;
         }
 
-        // .input(|r| r.pointer.latest_pos().unwrap_or_default())
         let mouse_pos = mouse_pos.unwrap_or_default();
 
         match &mode.dragging {
@@ -150,10 +145,6 @@ impl VisualNodeGraph {
                 .map(|o| self.get_node(&o.source).output_ports[o.output_ind].pos)
                 .unwrap_or(mouse_pos);
 
-            /*line_vec.push(egui::Shape::LineSegment {
-                points: [opos, ipos],
-                stroke: Stroke::new(2f32, Color32::WHITE),
-            });*/
             line_vec.push(draw_line(opos, ipos, 100));
         });
 
