@@ -4,7 +4,7 @@ use std::any;
 use egui::{Color32, Pos2, Stroke, ahash::HashMap};
 pub use vnode_infos::{VisualNode, VisualNodeInfo, add::AddInfo, constant::ConstantInfo};
 
-use crate::InteractionState;
+use crate::{DraggingState, InteractionState, helpers::draw_line};
 
 #[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
 pub struct VNodeId(usize);
@@ -53,7 +53,6 @@ impl VisualNodeGraph {
 
     pub fn show(
         &mut self,
-        mut mouse_pos: Option<Pos2>,
         ui: &mut egui::Ui,
         mode: &mut InteractionState,
     ) -> bool {
@@ -63,6 +62,15 @@ impl VisualNodeGraph {
         let lines_shape_id = ui.painter().add(egui::Shape::Noop);
 
         let mut any_drag_stopped = false;
+
+        // Make sure that if nothing is hovered, it will be treated as a line-to-cursor.
+        match &mode.dragging {
+            DraggingState::DraggingLineFromInputPort(inp, _) => mode.dragging = DraggingState::DraggingLineFromInputPort(*inp, None),
+            DraggingState::DraggingLineFromOutputPort(_, outp) => mode.dragging = DraggingState::DraggingLineFromOutputPort(None, *outp),
+            _ => ()
+        };
+
+        let mut mouse_pos = None;
 
         // Draw and update all the nodes
         for n in &mut self.nodes {
@@ -109,10 +117,11 @@ impl VisualNodeGraph {
 
                     let dest_pos = inp.pos;
                     let source_pos = self.get_node(&outp.source).output_ports[outp.output_ind].pos;
-                    line_vec.push(egui::Shape::LineSegment {
+                    line_vec.push(draw_line(source_pos, dest_pos, 100));
+                    /*line_vec.push(egui::Shape::LineSegment {
                         points: [source_pos, dest_pos],
                         stroke: Stroke::new(3f32, Color32::WHITE),
-                    });
+                    });*/
                 }
             }
         }
@@ -141,10 +150,11 @@ impl VisualNodeGraph {
                 .map(|o| self.get_node(&o.source).output_ports[o.output_ind].pos)
                 .unwrap_or(mouse_pos);
 
-            line_vec.push(egui::Shape::LineSegment {
+            /*line_vec.push(egui::Shape::LineSegment {
                 points: [opos, ipos],
                 stroke: Stroke::new(2f32, Color32::WHITE),
-            });
+            });*/
+            line_vec.push(draw_line(opos, ipos, 100));
         });
 
         ui.painter().set(lines_shape_id, line_vec);

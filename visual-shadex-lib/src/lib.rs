@@ -82,14 +82,9 @@ pub fn visual_shadex_test(
     _ = ui.button("Hello from visual shadex lib!");
     let mut vrect = viewstate.rect;
     egui::containers::Scene::new()
-        .sense(Sense::hover())
         .show(ui, &mut vrect, |ui| {
             _ = ui.button("WOOO!");
-            let mpos = ui
-                .response()
-                .interact_pointer_pos()
-                .or(ui.response().hover_pos());
-            graph.show(mpos, ui, mode);
+            graph.show(ui, mode);
         });
 
     viewstate.rect = vrect;
