@@ -54,7 +54,6 @@ fn draw_input_port(
 ) {
     ui.horizontal(|ui| {
         let (resp, ptr) = ui.allocate_painter(vec2(20f32, 20f32), Sense::hover() | Sense::drag());
-        let resp = resp.on_hover_text("Hovering!");
 
         let hovering = resp.contains_pointer() && mode.dragging.hover_inputs();
 
@@ -85,6 +84,8 @@ fn draw_input_port(
         }
 
         vport.pos = resp.rect.center();
+
+        resp.on_hover_text(RichText::new(format!("{}", port.value_type)));
     });
 }
 
@@ -134,6 +135,7 @@ fn draw_output_ports(
 
             ptr.circle_filled(resp.rect.center(), resp.rect.size().x * 0.5f32, color);
             vports[i].pos = resp.rect.center();
+            resp.on_hover_text(RichText::new(format!("{}", p.value_type)));
         });
     }
 }
@@ -173,7 +175,7 @@ impl VisualNode {
                 ui.vertical(|ui| {
                     ui.add_space(5f32);
                     ui.horizontal(|ui| {
-                        ui.add_space(10f32);
+                        ui.add_space(15f32);
                         // Find out how to make title label centered and/or distinguishable.
 
                         ui.add(
@@ -237,6 +239,7 @@ impl VisualNode {
         );
 
         let initial_rect = inner_resp.response.rect;
+        let initial_rect = initial_rect.shrink2(vec2(10f32, 0f32));
 
         ui.painter().set(
             idx,
