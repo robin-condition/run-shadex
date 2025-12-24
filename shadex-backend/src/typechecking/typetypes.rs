@@ -1,4 +1,6 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, rc::Rc};
+
+use crate::nodegraph::{FallibleNodeTypeRc, NodeAnnotation, NodeTypeInfo};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum U32Boundedness {
@@ -61,6 +63,16 @@ pub struct ValueType {
 }
 
 pub type MaybeValueType = Result<ValueType, TypeError>;
+
+pub trait AccessibleFallibleType: NodeAnnotation {
+    fn fallible(&self) -> &FallibleNodeTypeRc;
+}
+
+impl AccessibleFallibleType for FallibleNodeTypeRc {
+    fn fallible(&self) -> &FallibleNodeTypeRc {
+        self
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeError {

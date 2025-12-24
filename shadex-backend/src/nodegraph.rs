@@ -46,6 +46,7 @@ impl PortTypeAnnotation for Box<ValueType> {}
 impl PortTypeAnnotation for MaybeValueType {}
 pub type NodeTypeRc = Rc<NodeTypeInfo<Box<ValueType>>>;
 impl NodeAnnotation for NodeTypeRc {}
+impl NodeAnnotation for FallibleNodeTypeRc {}
 
 pub type TypedNode = Node<NodeTypeRc>;
 pub type TypedNodeGraph = NodeGraph<NodeTypeRc>;
@@ -73,6 +74,15 @@ impl<T: NodeAnnotation> NodeGraph<T> {
 
     pub fn get_node(&self, node_ref: NodeRef) -> Option<&Node<T>> {
         self.nodes.get(&node_ref.id)
+    }
+
+    pub fn get_node_mut(&mut self, node_ref: NodeRef) -> Option<&mut Node<T>> {
+        self.nodes.get_mut(&node_ref.id)
+    }
+
+    pub fn clear(&mut self) {
+        self.nodes.clear();
+        self.next_id = 0;
     }
 
     pub fn new() -> Self {

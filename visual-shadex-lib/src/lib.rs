@@ -1,13 +1,22 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use egui::{
     Pos2, Rect, Sense, Shape, Ui, Vec2, emath::TSTransform, epaint::CircleShape, layers, vec2,
 };
-use shadex_backend::nodegraph::{NodeGraph, NodeRef};
-
-use crate::visual_graph::{
-    AddInfo, ConstantInfo, VNodeInputRef, VNodeOutputRef, VisualNode, VisualNodeGraph,
+use shadex_backend::{
+    nodegraph::{NodeGraph, NodeRef},
+    typechecking::NodeGraphFormalTypeAnalysis,
 };
+
+use crate::{
+    formal_graph_annotations::FormalGraph,
+    graph_state::NodeGraphState,
+    visual_graph::{
+        AddInfo, ConstantInfo, VNodeInputRef, VNodeOutputRef, VisualNode, VisualNodeGraph,
+    },
+};
+
+pub mod graph_state;
 
 pub mod formal_graph_annotations;
 mod helpers;
@@ -71,23 +80,27 @@ pub fn make_add_node() -> VisualNode {
 }
 
 pub fn make_testing_vnode_graph() -> VisualNodeGraph {
-    let mut graph = VisualNodeGraph::default();
+    let graph = VisualNodeGraph::default();
     //graph.add_node(make_constant_node());
     //graph.add_node(make_add_node());
     graph
 }
 
+pub fn make_testing_graph_state() -> NodeGraphState {
+    NodeGraphState::new()
+}
+
 pub fn visual_shadex_test(
     ui: &mut egui::Ui,
     viewstate: &mut ViewState,
-    graph: &mut VisualNodeGraph,
+    graphstate: &mut NodeGraphState,
     mode: &mut InteractionState,
 ) {
     _ = ui.button("Hello from visual shadex lib!");
     let mut vrect = viewstate.rect;
     egui::containers::Scene::new().show(ui, &mut vrect, |ui| {
         _ = ui.button("WOOO!");
-        graph.show(ui, mode);
+        graphstate.show(ui, mode);
     });
 
     viewstate.rect = vrect;

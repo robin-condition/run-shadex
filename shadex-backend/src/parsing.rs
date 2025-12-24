@@ -16,16 +16,19 @@ use nom::{
     sequence::{self, delimited, preceded, terminated},
 };
 
-use crate::nodegraph::{
-    InputInfo, Node, NodeAnnotation, NodeGraph, NodeRef, NodeTypeInfo, NodeTypeRc, NodeTypeRef,
-    OutputInfo, TypedNodeGraph, ValueRef,
+use crate::{
+    nodegraph::{
+        FallibleNodeTypeRc, InputInfo, Node, NodeAnnotation, NodeGraph, NodeRef, NodeTypeInfo,
+        NodeTypeRc, NodeTypeRef, OutputInfo, TypedNodeGraph, ValueRef,
+    },
+    typechecking::typetypes::TypeError,
 };
 
-pub struct SimpleTypeWorld {
-    pub node_types: HashMap<String, NodeTypeRc>,
+pub struct SimpleTypeWorld<T: NodeAnnotation> {
+    pub node_types: HashMap<String, T>,
 }
 
-impl SimpleTypeWorld {
+impl<T: NodeAnnotation> SimpleTypeWorld<T> {
     pub fn new() -> Self {
         Self {
             node_types: HashMap::new(),
@@ -130,8 +133,8 @@ enum Value {
 fn process_node_expr(
     expr: NodeExpression,
     state: &mut ParseState,
-    graph: &mut TypedNodeGraph,
-    types: &SimpleTypeWorld,
+    graph: &mut NodeGraph<FallibleNodeTypeRc>,
+    types: &SimpleTypeWorld<FallibleNodeTypeRc>,
 ) -> Result<Value, ()> {
     match expr {
         NodeExpression::Identifier(name) => state.named_vars.get(&name).cloned().ok_or(()),
@@ -178,10 +181,17 @@ fn process_node_expr(
             let type_info = &node_info.annotation;
 
             let output_ind = type_info
-                .outputs
-                .iter()
-                .position(|outp| outp.name == output_name)
-                .ok_or(())?;
+                .clone()
+                .map(|f| {
+                    f.outputs
+                        .iter()
+                        .position(|outp| outp.name == output_name)
+                        .ok_or_else(|| TypeError {
+                            message: "No output of that name found".to_string(),
+                        })
+                })
+                .map_err(|_| ())?
+                .map_err(|_| ())?;
 
             Ok(Value::ValueRef(Some(ValueRef {
                 node: node_ref,
@@ -193,14 +203,14 @@ fn process_node_expr(
 }
 
 pub fn construct_node_graph(
-    types: &SimpleTypeWorld,
+    types: &SimpleTypeWorld<FallibleNodeTypeRc>,
     exprs: Vec<NodeExpression>,
-) -> Result<TypedNodeGraph, ()> {
+) -> Result<NodeGraph<FallibleNodeTypeRc>, ()> {
     let mut parse_state = ParseState {
         named_vars: HashMap::new(),
     };
 
-    let mut graph = TypedNodeGraph::new();
+    let mut graph = NodeGraph::<FallibleNodeTypeRc>::new();
 
     for expr in exprs {
         process_node_expr(expr, &mut parse_state, &mut graph, types)?;

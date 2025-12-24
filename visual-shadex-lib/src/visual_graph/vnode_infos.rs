@@ -1,14 +1,18 @@
-use std::{fmt::Display, rc::Rc};
+use std::{collections::HashMap, fmt::Display, rc::Rc};
 
 use egui::{
     Color32, FontId, InnerResponse, Label, Pos2, Rect, RichText, Sense, Separator, Shape, Stroke,
-    Vec2, epaint::RectShape, layers::PaintList, vec2,
+    Style, Vec2, epaint::RectShape, layers::PaintList, text::LayoutJob, vec2,
 };
 use shadex_backend::{
     nodegraph::{
         FallibleNodeTypeRc, InputInfo, NodeTypeInfo, NodeTypeRef, OutputInfo, PortTypeAnnotation,
+        ValueRef,
     },
-    typechecking::typetypes::MaybeValueType,
+    typechecking::{
+        InputTypeNotes, NodeInputReference, OutputPromotion, OutputTypeNotes,
+        typetypes::{MaybeValueType, TypeError, ValueType},
+    },
 };
 
 pub mod node_types;
@@ -16,6 +20,7 @@ pub use node_types::*;
 
 use crate::{
     InteractionState,
+    formal_graph_annotations::FormalGraph,
     visual_graph::{VNodeId, VNodeInputRef, VNodeOutputRef},
 };
 
@@ -46,6 +51,222 @@ pub struct VisualNode {
     pub output_ports: Vec<VisualOutputPort>,
 }
 
+trait ColorfulTypeNotes {
+    fn colors(&self) -> (&ValueType, HashMap<String, Color32>);
+}
+
+impl<T: ColorfulTypeNotes> RichTextPrintable for T {
+    fn print_to_layout_job(&self, ui: &mut egui::Ui, layout: &mut LayoutJob) {
+        colorful(self, ui, layout);
+    }
+}
+
+trait RichTextPrintable {
+    fn print_to_layout_job(&self, ui: &mut egui::Ui, layout: &mut LayoutJob);
+}
+
+trait NotesWithDotColor {
+    fn pick_dot_color(&self) -> Color32;
+}
+
+impl<T: NotesWithDotColor> NotesWithDotColor for Result<T, TypeError> {
+    fn pick_dot_color(&self) -> Color32 {
+        match self {
+            Ok(a) => a.pick_dot_color(),
+            Err(_) => Color32::YELLOW,
+        }
+    }
+}
+
+impl<T: NotesWithDotColor> NotesWithDotColor for (&MaybeValueType, Option<&T>) {
+    fn pick_dot_color(&self) -> Color32 {
+        self.1
+            .map(|f| f.pick_dot_color())
+            .unwrap_or_else(|| match self.0 {
+                Ok(_) => Color32::RED,
+                Err(_) => Color32::YELLOW,
+            })
+    }
+}
+
+impl NotesWithDotColor for OutputTypeNotes {
+    fn pick_dot_color(&self) -> Color32 {
+        if !self.inputs_parameterized_by.is_empty() {
+            Color32::LIGHT_BLUE
+        } else {
+            Color32::RED
+        }
+    }
+}
+
+impl NotesWithDotColor for InputTypeNotes {
+    fn pick_dot_color(&self) -> Color32 {
+        match &self.type_source {
+            shadex_backend::typechecking::InputValueTypeSource::FreeVariable(_) => {
+                Color32::DARK_GREEN
+            }
+            shadex_backend::typechecking::InputValueTypeSource::FromOutput(outp_prom) => {
+                if !outp_prom.underspecified_args.is_empty() {
+                    Color32::LIGHT_BLUE
+                } else if !outp_prom.added_constant_wrt.is_empty() {
+                    Color32::ORANGE
+                } else {
+                    Color32::RED
+                }
+            }
+        }
+    }
+}
+
+impl ColorfulTypeNotes for OutputTypeNotes {
+    fn colors(&self) -> (&ValueType, HashMap<String, Color32>) {
+        let mut colormap = HashMap::new();
+        for name in self.inputs_parameterized_by.keys() {
+            colormap.insert(name.clone(), Color32::LIGHT_BLUE);
+        }
+        (&self.formal_type, colormap)
+    }
+}
+
+impl ColorfulTypeNotes for (&ValueType, &OutputPromotion) {
+    fn colors(&self) -> (&ValueType, HashMap<String, Color32>) {
+        let mut colormap = HashMap::new();
+        for name in &self.1.underspecified_args {
+            colormap.insert(name.clone(), Color32::LIGHT_BLUE);
+        }
+        for name in self.1.added_constant_wrt.keys() {
+            colormap.insert(name.clone(), Color32::ORANGE);
+        }
+        (&self.0, colormap)
+    }
+}
+
+impl RichTextPrintable for InputTypeNotes {
+    fn print_to_layout_job(&self, ui: &mut egui::Ui, layout: &mut LayoutJob) {
+        match &self.type_source {
+            shadex_backend::typechecking::InputValueTypeSource::FreeVariable(_) => {
+                RichText::new("Free variable!")
+                    .color(ui.style().visuals.text_color())
+                    .append_to(
+                        layout,
+                        ui.style(),
+                        egui::FontSelection::Default,
+                        egui::Align::Min,
+                    )
+            }
+            shadex_backend::typechecking::InputValueTypeSource::FromOutput(output_promotion) => {
+                (&self.formal_type, output_promotion).print_to_layout_job(ui, layout);
+            }
+        }
+    }
+}
+
+fn colorful<T: ColorfulTypeNotes>(notes: &T, ui: &mut egui::Ui, layout: &mut LayoutJob) {
+    let (formal_type, special_colors) = notes.colors();
+    if formal_type.inputs.len() == 0 {
+        RichText::new(format!("{}", formal_type))
+            .color(ui.style().visuals.text_color())
+            .append_to(
+                layout,
+                ui.style(),
+                egui::FontSelection::Default,
+                egui::Align::Min,
+            );
+        return;
+    }
+
+    let mut args: Vec<_> = formal_type.inputs.iter().collect();
+    args.sort_by(|a, b| a.0.cmp(b.0));
+
+    for (i, (n, t)) in args.iter().enumerate() {
+        if i > 0 {
+            RichText::new(", ")
+                .color(ui.style().visuals.text_color())
+                .append_to(
+                    layout,
+                    ui.style(),
+                    egui::FontSelection::Default,
+                    egui::Align::Min,
+                );
+        }
+        RichText::new(format!("{}: {}", **n, t))
+            .color(
+                special_colors
+                    .get(*n)
+                    .map(|a| *a)
+                    .unwrap_or(ui.style().visuals.text_color()),
+            )
+            .append_to(
+                layout,
+                ui.style(),
+                egui::FontSelection::Default,
+                egui::Align::Min,
+            );
+    }
+
+    RichText::new(format!(" -> {}", formal_type.output))
+        .color(ui.style().visuals.text_color())
+        .append_to(
+            layout,
+            ui.style(),
+            egui::FontSelection::Default,
+            egui::Align::Min,
+        );
+}
+
+fn richtext_type_desc<T: RichTextPrintable>(
+    ui: &mut egui::Ui,
+    spec_type: &MaybeValueType,
+    typecheck_type: Option<&Result<T, TypeError>>,
+) -> LayoutJob {
+    let mut job = LayoutJob::default();
+    match spec_type {
+        Ok(t) => {
+            RichText::new(format!("Spec: {}\n", t))
+                .color(ui.style().visuals.text_color())
+                .append_to(
+                    &mut job,
+                    ui.style(),
+                    egui::FontSelection::Default,
+                    egui::Align::Min,
+                );
+        }
+        Err(e) => {
+            RichText::new(format!("Spec error! {}", e))
+                .color(ui.style().visuals.text_color())
+                .append_to(
+                    &mut job,
+                    ui.style(),
+                    egui::FontSelection::Default,
+                    egui::Align::Min,
+                );
+            return job;
+        }
+    }
+
+    match typecheck_type {
+        Some(Ok(tr)) => tr.print_to_layout_job(ui, &mut job),
+        Some(Err(e)) => RichText::new(format!("Typecheck error! {}", e))
+            .color(ui.style().visuals.text_color())
+            .append_to(
+                &mut job,
+                ui.style(),
+                egui::FontSelection::Default,
+                egui::Align::Min,
+            ),
+        None => RichText::new("No typecheck")
+            .color(ui.style().visuals.text_color())
+            .append_to(
+                &mut job,
+                ui.style(),
+                egui::FontSelection::Default,
+                egui::Align::Min,
+            ),
+    }
+
+    job
+}
+
 fn draw_input_port(
     ui: &mut egui::Ui,
     vref: &VNodeInputRef,
@@ -54,19 +275,27 @@ fn draw_input_port(
     mode: &mut InteractionState,
     any_drag_stopped: &mut bool,
     mouse_pos: &mut Option<Pos2>,
+
+    formal_graph: Option<&FormalGraph>,
 ) {
     ui.horizontal(|ui| {
         let (resp, ptr) = ui.allocate_painter(vec2(20f32, 20f32), Sense::hover() | Sense::drag());
 
         let hovering = resp.contains_pointer() && mode.dragging.hover_inputs();
 
+        let detailed_type = formal_graph.and_then(|f| {
+            let fnode_id = f.vnode_to_fnode.get(&vref.dest)?;
+            let notes = f.typecheck.input_type_notes.get(&NodeInputReference {
+                source_node: *fnode_id,
+                input_ind: vref.input_ind,
+            })?;
+            Some(notes)
+        });
+
         let color = if hovering {
             Color32::WHITE
         } else {
-            match &port.value_type {
-                Ok(_) => Color32::RED,
-                Err(_) => Color32::YELLOW,
-            }
+            (&port.value_type, detailed_type).pick_dot_color()
         };
 
         ptr.circle_filled(resp.rect.center(), resp.rect.size().x * 0.5f32, color);
@@ -91,10 +320,10 @@ fn draw_input_port(
 
         vport.pos = resp.rect.center();
 
-        resp.on_hover_text(RichText::new(match &port.value_type {
-            Ok(t) => format!("{}", t),
-            Err(e) => format!("Error! {}", e),
-        }));
+        resp.on_hover_ui(|ui| {
+            let label = Label::new(richtext_type_desc(ui, &port.value_type, detailed_type));
+            ui.add(label);
+        });
     });
 }
 
@@ -106,6 +335,8 @@ fn draw_output_ports(
     mode: &mut InteractionState,
     any_drag_stopped: &mut bool,
     mouse_pos: &mut Option<Pos2>,
+
+    formal_graph: Option<&FormalGraph>,
 ) {
     for (i, p) in ports.iter().enumerate() {
         ui.horizontal(|ui| {
@@ -118,14 +349,20 @@ fn draw_output_ports(
             let (resp, ptr) =
                 ui.allocate_painter(vec2(20f32, 20f32), Sense::hover() | Sense::drag());
 
+            let detailed_type = formal_graph.and_then(|f| {
+                let fnode_id = f.vnode_to_fnode.get(&node_ref)?;
+                let notes = f.typecheck.output_type_notes.get(&ValueRef {
+                    node: *fnode_id,
+                    output_index: i,
+                })?;
+                Some(notes)
+            });
+
             let hovering = resp.contains_pointer() && mode.dragging.hover_outputs();
             let color = if hovering {
                 Color32::WHITE
             } else {
-                match &p.value_type {
-                    Ok(_) => Color32::RED,
-                    Err(_) => Color32::YELLOW,
-                }
+                (&p.value_type, detailed_type).pick_dot_color()
             };
 
             if hovering {
@@ -147,10 +384,10 @@ fn draw_output_ports(
 
             ptr.circle_filled(resp.rect.center(), resp.rect.size().x * 0.5f32, color);
             vports[i].pos = resp.rect.center();
-            resp.on_hover_text(RichText::new(match &p.value_type {
-                Ok(t) => format!("{}", t),
-                Err(e) => format!("Error! {}", e),
-            }));
+            resp.on_hover_ui(|ui| {
+                let label = Label::new(richtext_type_desc(ui, &p.value_type, detailed_type));
+                ui.add(label);
+            });
         });
     }
 }
@@ -164,6 +401,8 @@ impl VisualNode {
         any_drag_stopped: &mut bool,
         mouse_pos: &mut Option<Pos2>,
         deleted: &mut bool,
+
+        formal_graph: Option<&FormalGraph>,
     ) -> InnerResponse<bool> {
         let idx = ui.painter().add(Shape::Noop);
         let changed = &mut false;
@@ -224,6 +463,7 @@ impl VisualNode {
                                         mode,
                                         any_drag_stopped,
                                         mouse_pos,
+                                        formal_graph,
                                     );
                                 }
                             }
@@ -246,6 +486,7 @@ impl VisualNode {
                                     mode,
                                     any_drag_stopped,
                                     mouse_pos,
+                                    formal_graph,
                                 );
                             }
                         });

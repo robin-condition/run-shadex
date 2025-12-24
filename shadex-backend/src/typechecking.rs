@@ -2,9 +2,9 @@ use core::panic;
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    nodegraph::{NodeGraph, NodeRef, ValueRef},
+    nodegraph::{Node, NodeAnnotation, NodeGraph, NodeRef, ValueRef},
     typechecking::typetypes::{
-        MaybeValueType, PrimitiveType, TypeError, U32Boundedness, ValueType,
+        AccessibleFallibleType, MaybeValueType, PrimitiveType, TypeError, U32Boundedness, ValueType,
     },
 };
 
@@ -99,17 +99,17 @@ pub struct OutputPromotion {
 
 #[derive(Debug)]
 pub struct NodeGraphFormalTypeAnalysis {
-    output_type_notes: HashMap<ValueRef, MaybeOutputTypeNotes>,
-    input_type_notes: HashMap<NodeInputReference, MaybeInputTypeNotes>,
+    pub output_type_notes: HashMap<ValueRef, MaybeOutputTypeNotes>,
+    pub input_type_notes: HashMap<NodeInputReference, MaybeInputTypeNotes>,
 }
 
 type TypedNodeGraph = crate::nodegraph::TypedNodeGraph;
 type TypedNode = crate::nodegraph::TypedNode;
 
 impl NodeGraphFormalTypeAnalysis {
-    fn analyze_single_input(
+    fn analyze_single_input<T: AccessibleFallibleType>(
         &mut self,
-        graph: &TypedNodeGraph,
+        graph: &NodeGraph<T>,
         inp_ref: NodeInputReference,
     ) -> MaybeInputTypeNotes {
         if let Some(res) = self.input_type_notes.get(&inp_ref) {
@@ -117,16 +117,24 @@ impl NodeGraphFormalTypeAnalysis {
         }
 
         let node = graph.get_node(inp_ref.source_node).unwrap();
-        let node_type = &node.annotation;
+        let node_type = match node.annotation.fallible().as_ref() {
+            Ok(a) => a,
+            Err(_) => {
+                return Err(TypeError {
+                    message: "Incomplete type".to_string(),
+                });
+            }
+        };
 
         let specd_input_type = &node_type.inputs[inp_ref.input_ind].value_type;
 
         let provided_output_type =
             node.inputs[inp_ref.input_ind].map(|f| self.analyze_single_output(graph, f));
 
-        let inp_notes = match provided_output_type {
-            Some(Err(e)) => Err(e),
-            Some(Ok(real_output)) => 'block: {
+        let inp_notes = match (specd_input_type.as_ref(), provided_output_type) {
+            (Err(e), Some(_)) => Err(e.clone()),
+            (_, Some(Err(e))) => Err(e),
+            (Ok(specd_input_type), Some(Ok(real_output))) => 'block: {
                 let mut op = OutputPromotion {
                     types_from_output: real_output
                         .formal_type
@@ -188,8 +196,9 @@ impl NodeGraphFormalTypeAnalysis {
                     type_source: src,
                 })
             }
-            None => {
-                let mut formal_type = (**specd_input_type).clone();
+            (Err(e), None) => Err(e.clone()),
+            (Ok(specd_input_type), None) => {
+                let mut formal_type = (specd_input_type).clone();
                 let itself = (
                     &node_type.inputs[inp_ref.input_ind].name,
                     formal_type.clone(),
@@ -215,9 +224,9 @@ impl NodeGraphFormalTypeAnalysis {
         inp_notes
     }
 
-    fn analyze_single_output(
+    fn analyze_single_output<T: AccessibleFallibleType>(
         &mut self,
-        graph: &TypedNodeGraph,
+        graph: &NodeGraph<T>,
         val_ref: ValueRef,
     ) -> MaybeOutputTypeNotes {
         // Check existing analysis.
@@ -235,12 +244,22 @@ impl NodeGraphFormalTypeAnalysis {
         let node = graph.get_node(node_ref).unwrap();
 
         // Original node type
-        let node_type = &node.annotation;
+        let node_type = match node.annotation.fallible().as_ref() {
+            Ok(a) => a,
+            Err(e) => {
+                self.output_type_notes.insert(val_ref, Err(e.clone()));
+                return Err(e.clone());
+            }
+        };
 
         // Original output type
         let output_type = &node_type.outputs[output_index];
 
         let output_type_notes = 'block: {
+            let output_type = match &output_type.value_type {
+                Ok(a) => a,
+                Err(e) => break 'block Err(e.clone()),
+            };
             // Steps:
             // 1. Record types of inputs, real and missing.
             //      - For each one, note absent and excess arguments.
@@ -261,7 +280,10 @@ impl NodeGraphFormalTypeAnalysis {
             let mut excess_input_args: HashMap<String, ValueType> = HashMap::new();
 
             for i in 0..node_type.inputs.len() {
-                let specd_input_type = &node_type.inputs[i].value_type;
+                let specd_input_type = match &node_type.inputs[i].value_type {
+                    Ok(a) => a,
+                    Err(e) => break 'block Err(e.clone()),
+                };
                 // This function call will insert "Constant WRT"s and casts as-needed, so that provided_input_type is always a superset of specd. ??? Maybe???
                 let provided_input_type = self.analyze_single_input(
                     graph,
@@ -304,13 +326,12 @@ impl NodeGraphFormalTypeAnalysis {
             let mut output_formal_args = excess_input_args;
 
             let specd_output_args: HashMap<String, ValueType> = output_type
-                .value_type
                 .inputs
                 .iter()
                 .map(|f| (f.0.clone(), *f.1.clone()))
                 .collect();
 
-            for output_inp in &output_type.value_type.inputs {
+            for output_inp in &output_type.inputs {
                 let slot = output_formal_args.entry(output_inp.0.clone());
                 match slot {
                     std::collections::hash_map::Entry::Occupied(occupied_entry) => {
@@ -332,7 +353,7 @@ impl NodeGraphFormalTypeAnalysis {
                     .into_iter()
                     .map(|f| (f.0, Box::new(f.1)))
                     .collect(),
-                output: output_type.value_type.output,
+                output: output_type.output,
             };
 
             Ok(OutputTypeNotes {
@@ -348,31 +369,34 @@ impl NodeGraphFormalTypeAnalysis {
         output_type_notes
     }
 
-    pub fn analyze(graph: &TypedNodeGraph) -> NodeGraphFormalTypeAnalysis {
+    pub fn analyze<T: AccessibleFallibleType>(graph: &NodeGraph<T>) -> NodeGraphFormalTypeAnalysis {
         let mut analysis = NodeGraphFormalTypeAnalysis {
             output_type_notes: HashMap::new(),
             input_type_notes: HashMap::new(),
         };
-        let nodes: Vec<(NodeRef, &TypedNode)> = graph.iter_nodes().collect();
+        let nodes: Vec<(NodeRef, &Node<T>)> = graph.iter_nodes().collect();
         for i in nodes {
-            for inp in 0..i.1.annotation.inputs.len() {
-                let _ = analysis.analyze_single_input(
-                    graph,
-                    NodeInputReference {
-                        source_node: i.0,
-                        input_ind: inp,
-                    },
-                );
-            }
+            let typ = i.1.annotation.fallible();
+            if let Ok(typ) = typ {
+                for inp in 0..typ.inputs.len() {
+                    let _ = analysis.analyze_single_input(
+                        graph,
+                        NodeInputReference {
+                            source_node: i.0,
+                            input_ind: inp,
+                        },
+                    );
+                }
 
-            for outp in 0..i.1.annotation.outputs.len() {
-                let _ = analysis.analyze_single_output(
-                    graph,
-                    ValueRef {
-                        node: i.0,
-                        output_index: outp,
-                    },
-                );
+                for outp in 0..typ.outputs.len() {
+                    let _ = analysis.analyze_single_output(
+                        graph,
+                        ValueRef {
+                            node: i.0,
+                            output_index: outp,
+                        },
+                    );
+                }
             }
         }
         analysis

@@ -1,11 +1,18 @@
 mod vnode_infos;
-use std::any;
+use std::{any, collections::HashMap};
 
-use egui::{Color32, Pos2, Stroke, ahash::HashMap};
+use egui::{Color32, Pos2, Stroke};
+use shadex_backend::{
+    nodegraph::{FallibleNodeTypeRc, Node, NodeGraph, ValueRef},
+    typechecking::{NodeGraphFormalTypeAnalysis, typetypes::TypeError},
+};
 pub use vnode_infos::{VisualNode, VisualNodeInfo, add::AddInfo, constant::ConstantInfo};
 
 use crate::{
-    DraggingState, InteractionState, helpers::draw_line, visual_graph::vnode_infos::INITIALIZATIONS,
+    DraggingState, InteractionState,
+    formal_graph_annotations::{FormalGraph, MappedNodeAnnotation},
+    helpers::draw_line,
+    visual_graph::vnode_infos::INITIALIZATIONS,
 };
 
 #[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
@@ -53,7 +60,12 @@ impl VisualNodeGraph {
         self.nodes.get_mut(id).unwrap()
     }
 
-    pub fn show(&mut self, ui: &mut egui::Ui, mode: &mut InteractionState) -> bool {
+    pub fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        mode: &mut InteractionState,
+        formal_graph: Option<&FormalGraph>,
+    ) -> bool {
         let mut changed = false;
 
         // Make a placeholder for the lines below all the nodes
@@ -87,6 +99,7 @@ impl VisualNodeGraph {
                     &mut any_drag_stopped,
                     &mut mouse_pos,
                     &mut deleted,
+                    formal_graph,
                 )
                 .inner
                     | changed;
@@ -204,5 +217,54 @@ impl VisualNodeGraph {
         });
 
         changed
+    }
+
+    pub fn to_formal(&self) -> Result<FormalGraph, ()> {
+        let mut nodegraph = NodeGraph::<MappedNodeAnnotation>::new();
+        let mut vnode_to_fnode = HashMap::new();
+
+        for n in &self.nodes {
+            let new_id = nodegraph.add_node(Node {
+                annotation: MappedNodeAnnotation {
+                    type_info: n.1.formal_type.clone().unwrap_or_else(|| {
+                        Err(TypeError {
+                            message: "No computed node type".to_string(),
+                        })
+                    }),
+                    source_node: n.0.clone(),
+                },
+                inputs: [None].repeat(n.1.input_ports.len()),
+                extra_data: None,
+            });
+
+            vnode_to_fnode.insert(*n.0, new_id);
+        }
+
+        for n in &self.nodes {
+            let f_id = vnode_to_fnode.get(n.0).unwrap();
+
+            let fref = nodegraph.get_node_mut(*f_id).unwrap();
+
+            for inp_p in n.1.input_ports.iter().enumerate() {
+                if let Some(src) = inp_p.1.input_source {
+                    let src_node_id = vnode_to_fnode.get(&src.source).unwrap();
+                    let src_node_output_ind = src.output_ind;
+                    let node_output_ref = ValueRef {
+                        node: *src_node_id,
+                        output_index: src_node_output_ind,
+                    };
+
+                    fref.inputs[inp_p.0] = Some(node_output_ref);
+                }
+            }
+        }
+
+        let typecheck = NodeGraphFormalTypeAnalysis::analyze(&nodegraph);
+
+        Ok(FormalGraph {
+            formal_graph: nodegraph,
+            typecheck,
+            vnode_to_fnode,
+        })
     }
 }

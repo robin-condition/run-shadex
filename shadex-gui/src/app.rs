@@ -1,12 +1,12 @@
 use egui::{Pos2, Rect, Vec2};
 use visual_shadex_lib::{
-    InteractionState, ViewState, make_constant_node, make_testing_vnode_graph,
-    visual_graph::VisualNodeGraph,
+    InteractionState, ViewState, graph_state::NodeGraphState, make_constant_node,
+    make_testing_graph_state, visual_graph::VisualNodeGraph,
 };
 
 pub struct App {
     vs: ViewState,
-    graph: VisualNodeGraph,
+    graph: NodeGraphState,
     mode: InteractionState,
 }
 
@@ -16,7 +16,7 @@ impl App {
             vs: ViewState {
                 rect: Rect::from_min_size(Pos2::ZERO, Vec2::splat(200f32)),
             },
-            graph: make_testing_vnode_graph(),
+            graph: make_testing_graph_state(),
             mode: InteractionState {
                 dragging: Default::default(),
                 prev_mouse_pos: Default::default(),

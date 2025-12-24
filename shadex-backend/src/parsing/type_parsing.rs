@@ -12,7 +12,7 @@ use nom::{
 };
 
 use crate::{
-    nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
+    nodegraph::{FallibleNodeTypeRc, InputInfo, NodeTypeInfo, NodeTypeRc, OutputInfo},
     parsing::SimpleTypeWorld,
     typechecking::typetypes::{
         MaybeValueType, PrimitiveType, TypeError, U32Boundedness, ValueType,
@@ -112,19 +112,19 @@ fn parse_named_value_type<'a>()
 }
 
 fn parse_node_type_declaration<'a>()
--> impl Parser<&'a [u8], Output = (String, NodeTypeInfo<Box<ValueType>>), Error = Error<&'a [u8]>> {
+-> impl Parser<&'a [u8], Output = (String, FallibleNodeTypeRc), Error = Error<&'a [u8]>> {
     let inputs_parser = separated_list0(
         ws(tag(";")),
         parse_named_value_type().map(|(n, content)| InputInfo {
             name: n,
-            value_type: Box::new(content),
+            value_type: Ok(content),
         }),
     );
     let outputs_parser = separated_list0(
         ws(tag(";")),
         parse_named_value_type().map(|(n, content)| OutputInfo {
             name: n,
-            value_type: Box::new(content),
+            value_type: Ok(content),
         }),
     );
 
@@ -134,25 +134,25 @@ fn parse_node_type_declaration<'a>()
 
     let assignment = separated_pair(fn_name, ws(tag("=")), fn_details);
 
-    assignment.map(|(name, (inputs, outputs))| (name, NodeTypeInfo { inputs, outputs }))
+    assignment
+        .map(|(name, (inputs, outputs))| (name, Ok(Rc::new(NodeTypeInfo { inputs, outputs }))))
 }
 
 pub fn parse_node_type_declarations<'a>()
--> impl Parser<&'a [u8], Output = Vec<(String, NodeTypeInfo<Box<ValueType>>)>, Error = Error<&'a [u8]>>
-{
+-> impl Parser<&'a [u8], Output = Vec<(String, FallibleNodeTypeRc)>, Error = Error<&'a [u8]>> {
     many0(ws(parse_node_type_declaration()))
 }
 
-pub fn parse_type_world(content: &str) -> Result<SimpleTypeWorld, ()> {
+pub fn parse_type_world(content: &str) -> Result<SimpleTypeWorld<FallibleNodeTypeRc>, ()> {
     let mut parser = terminated(parse_node_type_declarations(), eof);
     let res = match parser.parse_complete(content.as_bytes()) {
         Ok((_, ok)) => ok,
         Err(a) => panic!("{a}"),
     };
 
-    let mut uni = SimpleTypeWorld::new();
+    let mut uni = SimpleTypeWorld::<FallibleNodeTypeRc>::new();
     for i in res {
-        uni.node_types.insert(i.0, Rc::new(i.1));
+        uni.node_types.insert(i.0, i.1);
     }
 
     Ok(uni)
