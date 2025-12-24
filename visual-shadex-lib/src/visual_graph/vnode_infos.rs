@@ -22,6 +22,9 @@ pub const OVERSPECIFIED_COLOR: Color32 = Color32::ORANGE;
 pub const OK_COLOR: Color32 = Color32::LIGHT_RED;
 pub const FREE_VARIABLE_COLOR: Color32 = Color32::DARK_GREEN;
 
+pub const PORT_HB_WIDTH: f32 = 20f32;
+pub const PORT_VIS_RADIUS: f32 = 5f32;
+
 pub mod node_types;
 pub use node_types::*;
 
@@ -285,7 +288,10 @@ fn draw_input_port(
     formal_graph: Option<&FormalGraph>,
 ) {
     ui.horizontal(|ui| {
-        let (resp, ptr) = ui.allocate_painter(vec2(20f32, 20f32), Sense::hover() | Sense::drag());
+        let (resp, ptr) = ui.allocate_painter(
+            vec2(PORT_HB_WIDTH, PORT_HB_WIDTH),
+            Sense::hover() | Sense::drag(),
+        );
 
         let hovering = resp.contains_pointer() && mode.dragging.hover_inputs();
 
@@ -304,7 +310,7 @@ fn draw_input_port(
             (&port.value_type, detailed_type).pick_dot_color()
         };
 
-        ptr.circle_filled(resp.rect.center(), resp.rect.size().x * 0.5f32, color);
+        ptr.circle_filled(resp.rect.center(), PORT_VIS_RADIUS, color);
         ui.add(Label::new(&port.name).selectable(false));
 
         if hovering {
@@ -357,8 +363,10 @@ fn draw_output_ports(
             };
             ui.add(Label::new(&p.name).selectable(false));
 
-            let (resp, ptr) =
-                ui.allocate_painter(vec2(20f32, 20f32), Sense::hover() | Sense::drag());
+            let (resp, ptr) = ui.allocate_painter(
+                vec2(PORT_HB_WIDTH, PORT_HB_WIDTH),
+                Sense::hover() | Sense::drag(),
+            );
 
             let detailed_type = formal_graph.and_then(|f| {
                 let fnode_id = f.vnode_to_fnode.get(&node_ref)?;
@@ -393,7 +401,7 @@ fn draw_output_ports(
                 *any_drag_stopped = true;
             }
 
-            ptr.circle_filled(resp.rect.center(), resp.rect.size().x * 0.5f32, color);
+            ptr.circle_filled(resp.rect.center(), PORT_VIS_RADIUS, color);
             vports[i].pos = resp.rect.center();
             resp.on_hover_ui(|ui| {
                 let label = Label::new(richtext_type_desc(
