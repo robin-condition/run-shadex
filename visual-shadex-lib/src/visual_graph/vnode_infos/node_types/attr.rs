@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use shadex_backend::{
-    nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
-    typechecking::typetypes::{PrimitiveType, ValueType},
+    nodegraph::{FallibleNodeTypeRc, InputInfo, NodeTypeInfo, OutputInfo},
+    typechecking::typetypes::{PrimitiveType, TypeError, ValueType},
 };
 
 use crate::visual_graph::VisualNodeInfo;
@@ -10,33 +10,46 @@ use crate::visual_graph::VisualNodeInfo;
 pub struct AttrInfo {
     pub name: String,
     pub type_str: String,
+
+    prev_valid_type: FallibleNodeTypeRc,
 }
 impl AttrInfo {
-    pub fn new() -> Self {
+    fn build_type(n: &String, typstr: &str) -> FallibleNodeTypeRc {
+        let typ = shadex_backend::parsing::type_parsing::parse_complete_value_type(typstr);
+        Ok(Rc::new(NodeTypeInfo {
+            inputs: vec![InputInfo {
+                name: n.clone(),
+                value_type: typ.clone(),
+            }],
+            outputs: vec![OutputInfo {
+                name: n.clone(),
+                value_type: typ,
+            }],
+        }))
+    }
+
+    pub fn new(name: String, type_str: String) -> Self {
+        let ftype = Self::build_type(&name, &type_str);
         Self {
-            name: "x".to_string(),
-            type_str: "f32".to_string(),
+            name: name,
+            type_str: type_str,
+            prev_valid_type: ftype,
         }
     }
 }
 
 impl VisualNodeInfo for AttrInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool {
-        ui.text_edit_singleline(&mut self.name).changed()
-            | ui.text_edit_singleline(&mut self.type_str).changed()
+        let changed = ui.text_edit_singleline(&mut self.name).changed()
+            | ui.text_edit_singleline(&mut self.type_str).changed();
+        if changed {
+            self.prev_valid_type = Self::build_type(&self.name, &self.type_str);
+        }
+        changed
     }
 
-    fn get_shadex_type(&self) -> Rc<NodeTypeInfo> {
-        Rc::new(NodeTypeInfo {
-            inputs: vec![InputInfo {
-                name: self.name.clone(),
-                value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
-            }],
-            outputs: vec![OutputInfo {
-                name: self.name.clone(),
-                value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
-            }],
-        })
+    fn get_shadex_type(&self) -> FallibleNodeTypeRc {
+        self.prev_valid_type.clone()
     }
 
     fn get_name(&self) -> &str {

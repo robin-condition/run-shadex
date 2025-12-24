@@ -66,3 +66,9 @@ pub type MaybeValueType = Result<ValueType, TypeError>;
 pub struct TypeError {
     pub message: String,
 }
+
+impl Display for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Err({})", self.message)
+    }
+}

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Display, rc::Rc};
 
-use crate::typechecking::typetypes::ValueType;
+use crate::typechecking::typetypes::{MaybeValueType, TypeError, ValueType};
 
 pub trait NodeAnnotation: Clone + std::fmt::Debug {}
 
@@ -20,25 +20,31 @@ pub enum NodeTypeRef {
     Custom(usize),
 }
 
+pub trait PortTypeAnnotation: Clone {}
+
 #[derive(Debug)]
-pub struct InputInfo {
+pub struct InputInfo<T: PortTypeAnnotation> {
     pub name: String,
-    pub value_type: Box<ValueType>,
+    pub value_type: T,
 }
 
 #[derive(Debug)]
-pub struct OutputInfo {
+pub struct OutputInfo<T: PortTypeAnnotation> {
     pub name: String,
-    pub value_type: Box<ValueType>,
+    pub value_type: T,
 }
 
 #[derive(Debug)]
-pub struct NodeTypeInfo {
-    pub inputs: Vec<InputInfo>,
-    pub outputs: Vec<OutputInfo>,
+pub struct NodeTypeInfo<T: PortTypeAnnotation> {
+    pub inputs: Vec<InputInfo<T>>,
+    pub outputs: Vec<OutputInfo<T>>,
 }
 
-pub type NodeTypeRc = Rc<NodeTypeInfo>;
+pub type FallibleNodeTypeRc = Result<Rc<NodeTypeInfo<MaybeValueType>>, TypeError>;
+
+impl PortTypeAnnotation for Box<ValueType> {}
+impl PortTypeAnnotation for MaybeValueType {}
+pub type NodeTypeRc = Rc<NodeTypeInfo<Box<ValueType>>>;
 impl NodeAnnotation for NodeTypeRc {}
 
 pub type TypedNode = Node<NodeTypeRc>;

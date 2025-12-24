@@ -1,17 +1,17 @@
 use std::{collections::HashMap, rc::Rc};
 
 use shadex_backend::{
-    nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
+    nodegraph::{FallibleNodeTypeRc, InputInfo, NodeTypeInfo, OutputInfo},
     typechecking::typetypes::{PrimitiveType, U32Boundedness, ValueType},
 };
 
 use crate::visual_graph::VisualNodeInfo;
 
 thread_local! {
-    static OUT_TYPE: Rc<NodeTypeInfo> = Rc::new(NodeTypeInfo {
+    static OUT_TYPE: FallibleNodeTypeRc = Ok(Rc::new(NodeTypeInfo {
             inputs: vec![InputInfo {
                 name: "val".to_string(),
-                value_type: Box::new(ValueType {
+                value_type: Ok(ValueType {
                     inputs: [
                         (
                             "x".to_string(),
@@ -35,10 +35,10 @@ thread_local! {
                     .into_iter()
                     .collect(),
                     output: PrimitiveType::F32,
-                }),
+                })
             }],
             outputs: Vec::new(),
-        });
+        }));
 }
 
 pub struct OutInfo {}
@@ -53,8 +53,8 @@ impl VisualNodeInfo for OutInfo {
         false
     }
 
-    fn get_shadex_type(&self) -> Rc<NodeTypeInfo> {
-        OUT_TYPE.with(Rc::<NodeTypeInfo>::clone)
+    fn get_shadex_type(&self) -> FallibleNodeTypeRc {
+        OUT_TYPE.with(FallibleNodeTypeRc::clone)
     }
 
     fn get_name(&self) -> &str {

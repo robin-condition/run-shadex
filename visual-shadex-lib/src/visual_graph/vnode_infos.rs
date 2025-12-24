@@ -1,10 +1,15 @@
-use std::rc::Rc;
+use std::{fmt::Display, rc::Rc};
 
 use egui::{
     Color32, FontId, InnerResponse, Label, Pos2, Rect, RichText, Sense, Separator, Shape, Stroke,
     Vec2, epaint::RectShape, layers::PaintList, vec2,
 };
-use shadex_backend::nodegraph::{InputInfo, NodeTypeInfo, NodeTypeRef, OutputInfo};
+use shadex_backend::{
+    nodegraph::{
+        FallibleNodeTypeRc, InputInfo, NodeTypeInfo, NodeTypeRef, OutputInfo, PortTypeAnnotation,
+    },
+    typechecking::typetypes::MaybeValueType,
+};
 
 pub mod node_types;
 pub use node_types::*;
@@ -16,7 +21,7 @@ use crate::{
 
 pub trait VisualNodeInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool;
-    fn get_shadex_type(&self) -> Rc<NodeTypeInfo>;
+    fn get_shadex_type(&self) -> FallibleNodeTypeRc;
     fn get_name(&self) -> &str;
 }
 
@@ -35,7 +40,7 @@ pub struct VisualNode {
     pub data: Box<dyn VisualNodeInfo>,
     pub position: Vec2,
 
-    pub formal_type: Option<Rc<NodeTypeInfo>>,
+    pub formal_type: Option<FallibleNodeTypeRc>,
 
     pub input_ports: Vec<VisualInputPort>,
     pub output_ports: Vec<VisualOutputPort>,
@@ -45,7 +50,7 @@ fn draw_input_port(
     ui: &mut egui::Ui,
     vref: &VNodeInputRef,
     vport: &mut VisualInputPort,
-    port: &InputInfo,
+    port: &InputInfo<MaybeValueType>,
     mode: &mut InteractionState,
     any_drag_stopped: &mut bool,
     mouse_pos: &mut Option<Pos2>,
@@ -58,7 +63,10 @@ fn draw_input_port(
         let color = if hovering {
             Color32::WHITE
         } else {
-            Color32::RED
+            match &port.value_type {
+                Ok(_) => Color32::RED,
+                Err(_) => Color32::YELLOW,
+            }
         };
 
         ptr.circle_filled(resp.rect.center(), resp.rect.size().x * 0.5f32, color);
@@ -83,7 +91,10 @@ fn draw_input_port(
 
         vport.pos = resp.rect.center();
 
-        resp.on_hover_text(RichText::new(format!("{}", port.value_type)));
+        resp.on_hover_text(RichText::new(match &port.value_type {
+            Ok(t) => format!("{}", t),
+            Err(e) => format!("Error! {}", e),
+        }));
     });
 }
 
@@ -91,7 +102,7 @@ fn draw_output_ports(
     ui: &mut egui::Ui,
     node_ref: VNodeId,
     vports: &mut [VisualOutputPort],
-    ports: &[OutputInfo],
+    ports: &[OutputInfo<MaybeValueType>],
     mode: &mut InteractionState,
     any_drag_stopped: &mut bool,
     mouse_pos: &mut Option<Pos2>,
@@ -111,7 +122,10 @@ fn draw_output_ports(
             let color = if hovering {
                 Color32::WHITE
             } else {
-                Color32::RED
+                match &p.value_type {
+                    Ok(_) => Color32::RED,
+                    Err(_) => Color32::YELLOW,
+                }
             };
 
             if hovering {
@@ -133,7 +147,10 @@ fn draw_output_ports(
 
             ptr.circle_filled(resp.rect.center(), resp.rect.size().x * 0.5f32, color);
             vports[i].pos = resp.rect.center();
-            resp.on_hover_text(RichText::new(format!("{}", p.value_type)));
+            resp.on_hover_text(RichText::new(match &p.value_type {
+                Ok(t) => format!("{}", t),
+                Err(e) => format!("Error! {}", e),
+            }));
         });
     }
 }
@@ -152,7 +169,7 @@ impl VisualNode {
         let changed = &mut false;
 
         self.formal_type = Some(self.data.get_shadex_type());
-        if let Some(formal_type) = &self.formal_type {
+        if let Some(Ok(formal_type)) = &self.formal_type {
             self.input_ports.resize(
                 formal_type.inputs.len(),
                 VisualInputPort {
@@ -194,7 +211,7 @@ impl VisualNode {
                             // Do input ports
                             // TODO: Ports selectable.
 
-                            if let Some(formal_type) = &self.formal_type {
+                            if let Some(Ok(formal_type)) = &self.formal_type {
                                 for (i, p) in formal_type.inputs.iter().enumerate() {
                                     draw_input_port(
                                         ui,
@@ -220,7 +237,7 @@ impl VisualNode {
                         ui.vertical(|ui| {
                             // Do output ports
                             // TODO: Ports selectable.
-                            if let Some(formal_type) = &self.formal_type {
+                            if let Some(Ok(formal_type)) = &self.formal_type {
                                 draw_output_ports(
                                     ui,
                                     selfref,

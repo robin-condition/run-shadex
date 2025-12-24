@@ -14,7 +14,9 @@ use nom::{
 use crate::{
     nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
     parsing::SimpleTypeWorld,
-    typechecking::typetypes::{PrimitiveType, U32Boundedness, ValueType},
+    typechecking::typetypes::{
+        MaybeValueType, PrimitiveType, TypeError, U32Boundedness, ValueType,
+    },
 };
 
 use super::{parse_identifier, ws};
@@ -92,6 +94,16 @@ pub fn parse_sugar_fn_type<'a>()
     )))
 }
 
+pub fn parse_complete_value_type(content: &str) -> MaybeValueType {
+    let mut parser = terminated(parse_sugar_fn_type(), eof);
+    match parser.parse_complete(content.as_bytes()) {
+        Ok(typ) => Ok(typ.1),
+        Err(_) => Err(TypeError {
+            message: "Parsing failed".to_string(),
+        }),
+    }
+}
+
 // Node types
 
 fn parse_named_value_type<'a>()
@@ -100,7 +112,7 @@ fn parse_named_value_type<'a>()
 }
 
 fn parse_node_type_declaration<'a>()
--> impl Parser<&'a [u8], Output = (String, NodeTypeInfo), Error = Error<&'a [u8]>> {
+-> impl Parser<&'a [u8], Output = (String, NodeTypeInfo<Box<ValueType>>), Error = Error<&'a [u8]>> {
     let inputs_parser = separated_list0(
         ws(tag(";")),
         parse_named_value_type().map(|(n, content)| InputInfo {
@@ -126,7 +138,8 @@ fn parse_node_type_declaration<'a>()
 }
 
 pub fn parse_node_type_declarations<'a>()
--> impl Parser<&'a [u8], Output = Vec<(String, NodeTypeInfo)>, Error = Error<&'a [u8]>> {
+-> impl Parser<&'a [u8], Output = Vec<(String, NodeTypeInfo<Box<ValueType>>)>, Error = Error<&'a [u8]>>
+{
     many0(ws(parse_node_type_declaration()))
 }
 
