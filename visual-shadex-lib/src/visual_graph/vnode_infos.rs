@@ -45,8 +45,6 @@ pub struct VisualNode {
     pub data: Box<dyn VisualNodeInfo>,
     pub position: Vec2,
 
-    pub formal_type: Option<FallibleNodeTypeRc>,
-
     pub input_ports: Vec<VisualInputPort>,
     pub output_ports: Vec<VisualOutputPort>,
 }
@@ -215,6 +213,7 @@ fn colorful<T: ColorfulTypeNotes>(notes: &T, ui: &mut egui::Ui, layout: &mut Lay
 }
 
 fn richtext_type_desc<T: RichTextPrintable>(
+    name: &String,
     ui: &mut egui::Ui,
     spec_type: &MaybeValueType,
     typecheck_type: Option<&Result<T, TypeError>>,
@@ -222,7 +221,7 @@ fn richtext_type_desc<T: RichTextPrintable>(
     let mut job = LayoutJob::default();
     match spec_type {
         Ok(t) => {
-            RichText::new(format!("Spec: {}\n", t))
+            RichText::new(format!("{} @ {}\n", name, t))
                 .color(ui.style().visuals.text_color())
                 .append_to(
                     &mut job,
@@ -321,7 +320,12 @@ fn draw_input_port(
         vport.pos = resp.rect.center();
 
         resp.on_hover_ui(|ui| {
-            let label = Label::new(richtext_type_desc(ui, &port.value_type, detailed_type));
+            let label = Label::new(richtext_type_desc(
+                &port.name,
+                ui,
+                &port.value_type,
+                detailed_type,
+            ));
             ui.add(label);
         });
     });
@@ -385,7 +389,12 @@ fn draw_output_ports(
             ptr.circle_filled(resp.rect.center(), resp.rect.size().x * 0.5f32, color);
             vports[i].pos = resp.rect.center();
             resp.on_hover_ui(|ui| {
-                let label = Label::new(richtext_type_desc(ui, &p.value_type, detailed_type));
+                let label = Label::new(richtext_type_desc(
+                    &p.name,
+                    ui,
+                    &p.value_type,
+                    detailed_type,
+                ));
                 ui.add(label);
             });
         });
@@ -407,8 +416,7 @@ impl VisualNode {
         let idx = ui.painter().add(Shape::Noop);
         let changed = &mut false;
 
-        self.formal_type = Some(self.data.get_shadex_type());
-        if let Some(Ok(formal_type)) = &self.formal_type {
+        if let Ok(formal_type) = &self.data.get_shadex_type() {
             self.input_ports.resize(
                 formal_type.inputs.len(),
                 VisualInputPort {
@@ -450,7 +458,7 @@ impl VisualNode {
                             // Do input ports
                             // TODO: Ports selectable.
 
-                            if let Some(Ok(formal_type)) = &self.formal_type {
+                            if let Ok(formal_type) = &self.data.get_shadex_type() {
                                 for (i, p) in formal_type.inputs.iter().enumerate() {
                                     draw_input_port(
                                         ui,
@@ -477,7 +485,7 @@ impl VisualNode {
                         ui.vertical(|ui| {
                             // Do output ports
                             // TODO: Ports selectable.
-                            if let Some(Ok(formal_type)) = &self.formal_type {
+                            if let Ok(formal_type) = &self.data.get_shadex_type() {
                                 draw_output_ports(
                                     ui,
                                     selfref,

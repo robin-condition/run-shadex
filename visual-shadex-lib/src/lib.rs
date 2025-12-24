@@ -62,7 +62,6 @@ impl DraggingState {
 pub fn make_constant_node() -> VisualNode {
     VisualNode {
         data: Box::new(ConstantInfo::new(2f32)),
-        formal_type: None,
         position: Vec2::ZERO,
         input_ports: Vec::new(),
         output_ports: Vec::new(),
@@ -72,7 +71,6 @@ pub fn make_constant_node() -> VisualNode {
 pub fn make_add_node() -> VisualNode {
     VisualNode {
         data: Box::new(AddInfo::new()),
-        formal_type: None,
         position: Vec2::ZERO,
         input_ports: Vec::new(),
         output_ports: Vec::new(),

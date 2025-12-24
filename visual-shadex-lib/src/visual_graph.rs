@@ -12,7 +12,7 @@ use crate::{
     DraggingState, InteractionState,
     formal_graph_annotations::{FormalGraph, MappedNodeAnnotation},
     helpers::draw_line,
-    visual_graph::vnode_infos::INITIALIZATIONS,
+    visual_graph::vnode_infos::{INITIALIZATIONS, VisualInputPort, VisualOutputPort},
 };
 
 #[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
@@ -66,7 +66,7 @@ impl VisualNodeGraph {
         mode: &mut InteractionState,
         formal_graph: Option<&FormalGraph>,
     ) -> bool {
-        let mut changed = false;
+        let changed = &mut false;
 
         // Make a placeholder for the lines below all the nodes
         let lines_shape_id = ui.painter().add(egui::Shape::Noop);
@@ -91,7 +91,7 @@ impl VisualNodeGraph {
         // Draw and update all the nodes
         for n in &mut self.nodes {
             let mut deleted = false;
-            changed =
+            *changed =
                 n.1.show_box(
                     ui,
                     *n.0,
@@ -102,7 +102,7 @@ impl VisualNodeGraph {
                     formal_graph,
                 )
                 .inner
-                    | changed;
+                    | *changed;
             if deleted {
                 node_to_del = Some(*n.0);
             }
@@ -115,7 +115,7 @@ impl VisualNodeGraph {
                 if node.input_ports.len() > inp.input_ind {
                     node.input_ports[inp.input_ind].input_source = Some(*outp);
                 }
-                changed = true;
+                *changed = true;
             }
             if let crate::DraggingState::DraggingLineFromOutputPort(Some(inp), outp) =
                 &mode.dragging
@@ -124,7 +124,7 @@ impl VisualNodeGraph {
                 if node.input_ports.len() > inp.input_ind {
                     node.input_ports[inp.input_ind].input_source = Some(*outp);
                 }
-                changed = true;
+                *changed = true;
             }
 
             mode.dragging = crate::DraggingState::NotDraggingLine;
@@ -205,18 +205,29 @@ impl VisualNodeGraph {
             let pos = mode.prev_mouse_pos;
             for (n, v) in &INITIALIZATIONS {
                 if ui.button(*n).clicked() {
+                    let data = v();
+                    let formal_type = data.get_shadex_type();
+                    let inp_len = formal_type.as_ref().map(|t| t.inputs.len()).unwrap_or(0);
+                    let outp_len = formal_type.as_ref().map(|t| t.outputs.len()).unwrap_or(0);
+
                     self.add_node(VisualNode {
-                        data: v(),
+                        data: data,
                         position: pos.to_vec2(),
-                        formal_type: None,
-                        input_ports: Vec::new(),
-                        output_ports: Vec::new(),
+                        input_ports: vec![
+                            VisualInputPort {
+                                pos,
+                                input_source: None,
+                            };
+                            inp_len
+                        ],
+                        output_ports: vec![VisualOutputPort { pos }; outp_len],
                     });
+                    *changed = true;
                 }
             }
         });
 
-        changed
+        *changed
     }
 
     pub fn to_formal(&self) -> Result<FormalGraph, ()> {
@@ -226,11 +237,7 @@ impl VisualNodeGraph {
         for n in &self.nodes {
             let new_id = nodegraph.add_node(Node {
                 annotation: MappedNodeAnnotation {
-                    type_info: n.1.formal_type.clone().unwrap_or_else(|| {
-                        Err(TypeError {
-                            message: "No computed node type".to_string(),
-                        })
-                    }),
+                    type_info: n.1.data.get_shadex_type(),
                     source_node: n.0.clone(),
                 },
                 inputs: [None].repeat(n.1.input_ports.len()),
