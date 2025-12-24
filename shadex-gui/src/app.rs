@@ -14,7 +14,7 @@ impl App {
     pub fn new<'a>(_ctx: &eframe::CreationContext<'a>) -> Self {
         Self {
             vs: ViewState {
-                rect: Rect::from_min_size(Pos2::ZERO, Vec2::splat(200f32)),
+                rect: Rect::from_min_size(Pos2::ZERO, Vec2::splat(300f32)),
             },
             graph: make_testing_graph_state(),
             mode: InteractionState {

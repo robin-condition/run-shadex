@@ -96,10 +96,12 @@ pub fn visual_shadex_test(
 ) {
     _ = ui.button("Hello from visual shadex lib!");
     let mut vrect = viewstate.rect;
-    egui::containers::Scene::new().show(ui, &mut vrect, |ui| {
-        _ = ui.button("WOOO!");
-        graphstate.show(ui, mode);
-    });
+    egui::containers::Scene::new()
+        .zoom_range(0.0..=5f32)
+        .show(ui, &mut vrect, |ui| {
+            _ = ui.button("WOOO!");
+            graphstate.show(ui, mode);
+        });
 
     viewstate.rect = vrect;
 }
