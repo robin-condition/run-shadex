@@ -72,8 +72,8 @@ pub fn make_add_node() -> VisualNode {
 
 pub fn make_testing_vnode_graph() -> VisualNodeGraph {
     let mut graph = VisualNodeGraph::default();
-    graph.add_node(make_constant_node());
-    graph.add_node(make_add_node());
+    //graph.add_node(make_constant_node());
+    //graph.add_node(make_add_node());
     graph
 }
 
