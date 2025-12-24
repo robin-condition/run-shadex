@@ -15,6 +15,13 @@ use shadex_backend::{
     },
 };
 
+pub const UNDERSPECIFIED_COLOR: Color32 = Color32::CYAN;
+pub const ERROR_COLOR: Color32 = Color32::YELLOW;
+pub const HOVER_COLOR: Color32 = Color32::WHITE;
+pub const OVERSPECIFIED_COLOR: Color32 = Color32::ORANGE;
+pub const OK_COLOR: Color32 = Color32::LIGHT_RED;
+pub const FREE_VARIABLE_COLOR: Color32 = Color32::DARK_GREEN;
+
 pub mod node_types;
 pub use node_types::*;
 
@@ -71,7 +78,7 @@ impl<T: NotesWithDotColor> NotesWithDotColor for Result<T, TypeError> {
     fn pick_dot_color(&self) -> Color32 {
         match self {
             Ok(a) => a.pick_dot_color(),
-            Err(_) => Color32::YELLOW,
+            Err(_) => ERROR_COLOR,
         }
     }
 }
@@ -81,8 +88,8 @@ impl<T: NotesWithDotColor> NotesWithDotColor for (&MaybeValueType, Option<&T>) {
         self.1
             .map(|f| f.pick_dot_color())
             .unwrap_or_else(|| match self.0 {
-                Ok(_) => Color32::RED,
-                Err(_) => Color32::YELLOW,
+                Ok(_) => OK_COLOR,
+                Err(_) => ERROR_COLOR,
             })
     }
 }
@@ -90,9 +97,9 @@ impl<T: NotesWithDotColor> NotesWithDotColor for (&MaybeValueType, Option<&T>) {
 impl NotesWithDotColor for OutputTypeNotes {
     fn pick_dot_color(&self) -> Color32 {
         if !self.inputs_parameterized_by.is_empty() {
-            Color32::LIGHT_BLUE
+            UNDERSPECIFIED_COLOR
         } else {
-            Color32::RED
+            OK_COLOR
         }
     }
 }
@@ -101,15 +108,15 @@ impl NotesWithDotColor for InputTypeNotes {
     fn pick_dot_color(&self) -> Color32 {
         match &self.type_source {
             shadex_backend::typechecking::InputValueTypeSource::FreeVariable(_) => {
-                Color32::DARK_GREEN
+                FREE_VARIABLE_COLOR
             }
             shadex_backend::typechecking::InputValueTypeSource::FromOutput(outp_prom) => {
                 if !outp_prom.underspecified_args.is_empty() {
-                    Color32::LIGHT_BLUE
+                    UNDERSPECIFIED_COLOR
                 } else if !outp_prom.added_constant_wrt.is_empty() {
-                    Color32::ORANGE
+                    OVERSPECIFIED_COLOR
                 } else {
-                    Color32::RED
+                    OK_COLOR
                 }
             }
         }
@@ -120,7 +127,7 @@ impl ColorfulTypeNotes for OutputTypeNotes {
     fn colors(&self) -> (&ValueType, HashMap<String, Color32>) {
         let mut colormap = HashMap::new();
         for name in self.inputs_parameterized_by.keys() {
-            colormap.insert(name.clone(), Color32::LIGHT_BLUE);
+            colormap.insert(name.clone(), UNDERSPECIFIED_COLOR);
         }
         (&self.formal_type, colormap)
     }
@@ -130,10 +137,10 @@ impl ColorfulTypeNotes for (&ValueType, &OutputPromotion) {
     fn colors(&self) -> (&ValueType, HashMap<String, Color32>) {
         let mut colormap = HashMap::new();
         for name in &self.1.underspecified_args {
-            colormap.insert(name.clone(), Color32::LIGHT_BLUE);
+            colormap.insert(name.clone(), UNDERSPECIFIED_COLOR);
         }
         for name in self.1.added_constant_wrt.keys() {
-            colormap.insert(name.clone(), Color32::ORANGE);
+            colormap.insert(name.clone(), OVERSPECIFIED_COLOR);
         }
         (&self.0, colormap)
     }
@@ -292,7 +299,7 @@ fn draw_input_port(
         });
 
         let color = if hovering {
-            Color32::WHITE
+            HOVER_COLOR
         } else {
             (&port.value_type, detailed_type).pick_dot_color()
         };
@@ -364,7 +371,7 @@ fn draw_output_ports(
 
             let hovering = resp.contains_pointer() && mode.dragging.hover_outputs();
             let color = if hovering {
-                Color32::WHITE
+                HOVER_COLOR
             } else {
                 (&p.value_type, detailed_type).pick_dot_color()
             };
