@@ -4,9 +4,7 @@ use egui::{
     Color32, FontId, InnerResponse, Label, Pos2, Rect, RichText, Sense, Separator, Shape, Stroke,
     Vec2, epaint::RectShape, layers::PaintList, vec2,
 };
-use shadex_backend::nodegraph::{
-    InputInfo, NodeTypeInfo, NodeTypeRef, OutputInfo, PrimitiveType, TypeUniverse, ValueType,
-};
+use shadex_backend::nodegraph::{InputInfo, NodeTypeInfo, NodeTypeRef, OutputInfo, TypeUniverse};
 
 pub mod node_types;
 pub use node_types::*;

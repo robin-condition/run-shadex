@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use shadex_backend::nodegraph::{InputInfo, NodeTypeInfo, OutputInfo, PrimitiveType, ValueType};
+use shadex_backend::{
+    execution::typechecking::typetypes::{PrimitiveType, ValueType, U32Boundedness},
+    nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
+};
 
 use crate::visual_graph::VisualNodeInfo;
 
@@ -26,19 +29,19 @@ impl VisualNodeInfo for OutInfo {
                         (
                             "x".to_string(),
                             Box::new(ValueType::primitive(PrimitiveType::U32(
-                                shadex_backend::nodegraph::U32Boundedness::Bounded(1024),
+                                U32Boundedness::Bounded(1024),
                             ))),
                         ),
                         (
                             "y".to_string(),
                             Box::new(ValueType::primitive(PrimitiveType::U32(
-                                shadex_backend::nodegraph::U32Boundedness::Bounded(1024),
+                                U32Boundedness::Bounded(1024),
                             ))),
                         ),
                         (
                             "component".to_string(),
                             Box::new(ValueType::primitive(PrimitiveType::U32(
-                                shadex_backend::nodegraph::U32Boundedness::Bounded(3),
+                                U32Boundedness::Bounded(3),
                             ))),
                         ),
                     ]

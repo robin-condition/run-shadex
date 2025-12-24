@@ -19,14 +19,14 @@ pub struct SinglePrimitiveComputationResult<T: Copy> {
     val: T,
 }
 
-struct FunctionRepresentation {
+pub struct FunctionRepresentation {
     // Some kind of type information
 
     // And association computation
     computation: ComputationRepresentation,
 }
 
-struct ConstantPrimitiveFunction<T> {
+pub struct ConstantPrimitiveFunction<T> {
     pub val: T,
 }
 

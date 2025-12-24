@@ -17,8 +17,8 @@ use nom::{
 };
 
 use crate::nodegraph::{
-    InputInfo, Node, NodeGraph, NodeRef, NodeTypeInfo, NodeTypeRef, OutputInfo, PrimitiveType,
-    TypeUniverse, ValueRef, ValueType,
+    InputInfo, Node, NodeGraph, NodeRef, NodeTypeInfo, NodeTypeRef, OutputInfo, TypeUniverse,
+    ValueRef,
 };
 
 #[derive(Clone)]

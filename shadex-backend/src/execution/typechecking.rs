@@ -1,7 +1,14 @@
 use core::panic;
 use std::collections::{HashMap, HashSet};
 
-use crate::nodegraph::{NodeGraph, NodeRef, NodeTypeRef, PrimitiveType, ValueRef, ValueType};
+use crate::{
+    execution::typechecking::typetypes::{
+        MaybeValueType, PrimitiveType, TypeError, U32Boundedness, ValueType,
+    },
+    nodegraph::{NodeGraph, NodeRef, ValueRef},
+};
+
+pub mod typetypes;
 
 #[derive(Default)]
 pub struct ValueTypeProperties {
@@ -11,11 +18,11 @@ pub struct ValueTypeProperties {
 
 fn assess_known_constant_type(typ: PrimitiveType) -> ValueTypeProperties {
     match typ {
-        crate::nodegraph::PrimitiveType::F32 => Default::default(),
-        crate::nodegraph::PrimitiveType::I32 => Default::default(),
-        crate::nodegraph::PrimitiveType::U32(u32_boundedness) => match u32_boundedness {
-            crate::nodegraph::U32Boundedness::Unbounded => Default::default(),
-            crate::nodegraph::U32Boundedness::Bounded(n) => ValueTypeProperties {
+        PrimitiveType::F32 => Default::default(),
+        PrimitiveType::I32 => Default::default(),
+        PrimitiveType::U32(u32_boundedness) => match u32_boundedness {
+            U32Boundedness::Unbounded => Default::default(),
+            U32Boundedness::Bounded(n) => ValueTypeProperties {
                 can_index_texture_axis: n <= 1024u32,
                 can_index_vector: n <= 4,
             },
@@ -48,6 +55,8 @@ pub struct OutputTypeNotes {
     pub inputs_parameterized_by: HashMap<String, ValueType>,
 }
 
+pub type MaybeOutputTypeNotes = Result<OutputTypeNotes, TypeError>;
+
 #[derive(Clone, Debug)]
 pub struct InputTypeNotes {
     // Formal type EITHER comes freeformed from free variable, or has arguments that each come from one of two places.
@@ -55,6 +64,8 @@ pub struct InputTypeNotes {
 
     pub type_source: InputValueTypeSource,
 }
+
+pub type MaybeInputTypeNotes = Result<InputTypeNotes, TypeError>;
 
 #[derive(Clone, Debug)]
 pub enum InputValueTypeSource {
@@ -88,8 +99,8 @@ pub struct OutputPromotion {
 
 #[derive(Debug)]
 pub struct NodeGraphFormalTypeAnalysis {
-    output_type_notes: HashMap<ValueRef, OutputTypeNotes>,
-    input_type_notes: HashMap<NodeInputReference, InputTypeNotes>,
+    output_type_notes: HashMap<ValueRef, MaybeOutputTypeNotes>,
+    input_type_notes: HashMap<NodeInputReference, MaybeInputTypeNotes>,
 }
 
 impl NodeGraphFormalTypeAnalysis {
@@ -97,7 +108,7 @@ impl NodeGraphFormalTypeAnalysis {
         &mut self,
         graph: &NodeGraph,
         inp_ref: NodeInputReference,
-    ) -> InputTypeNotes {
+    ) -> MaybeInputTypeNotes {
         if let Some(res) = self.input_type_notes.get(&inp_ref) {
             return res.clone();
         }
@@ -111,7 +122,8 @@ impl NodeGraphFormalTypeAnalysis {
             node.inputs[inp_ref.input_ind].map(|f| self.analyze_single_output(graph, f));
 
         let inp_notes = match provided_output_type {
-            Some(real_output) => {
+            Some(Err(e)) => Err(e),
+            Some(Ok(real_output)) => 'block: {
                 let mut op = OutputPromotion {
                     types_from_output: real_output
                         .formal_type
@@ -147,25 +159,31 @@ impl NodeGraphFormalTypeAnalysis {
                         // So I'm skipping it this time.
 
                         if **real_output.formal_type.inputs.get(arg.0).unwrap() != **arg.1 {
-                            panic!("Input argument type is wrong")
+                            break 'block Err(TypeError {
+                                message: "Input argument type is wrong.".to_string(),
+                            });
+                            //panic!("Input argument type is wrong")
                         }
                     }
                 }
 
                 if specd_input_type.output != real_output.formal_type.output {
                     // Should insert a cast. For now, scream.
-                    panic!("Wrong primitive! Tell Robin to add casting.");
+                    break 'block Err(TypeError {
+                        message: "Wrong primitive! Tell Robin to add casting.".to_string(),
+                    });
+                    //panic!("Wrong primitive! Tell Robin to add casting.");
                 }
 
                 let src = InputValueTypeSource::FromOutput(op);
 
-                InputTypeNotes {
+                Ok(InputTypeNotes {
                     formal_type: ValueType {
                         inputs: result_args,
                         output: specd_input_type.output,
                     },
                     type_source: src,
-                }
+                })
             }
             None => {
                 let mut formal_type = (**specd_input_type).clone();
@@ -176,7 +194,7 @@ impl NodeGraphFormalTypeAnalysis {
                 formal_type
                     .inputs
                     .insert(itself.0.clone(), Box::new(itself.1.clone()));
-                InputTypeNotes {
+                Ok(InputTypeNotes {
                     formal_type: formal_type,
                     type_source: InputValueTypeSource::FreeVariable(FreeVariableTypeSource {
                         types_from_fv: specd_input_type
@@ -186,7 +204,7 @@ impl NodeGraphFormalTypeAnalysis {
                             .collect(),
                         itself: (itself.0.clone(), itself.1),
                     }),
-                }
+                })
             }
         };
 
@@ -194,7 +212,11 @@ impl NodeGraphFormalTypeAnalysis {
         inp_notes
     }
 
-    fn analyze_single_output(&mut self, graph: &NodeGraph, val_ref: ValueRef) -> OutputTypeNotes {
+    fn analyze_single_output(
+        &mut self,
+        graph: &NodeGraph,
+        val_ref: ValueRef,
+    ) -> MaybeOutputTypeNotes {
         // Check existing analysis.
         // If already analyzed:
         if let Some(typ) = self.output_type_notes.get(&val_ref) {
@@ -215,85 +237,106 @@ impl NodeGraphFormalTypeAnalysis {
         // Original output type
         let output_type = &node_type.outputs[output_index];
 
-        // Steps:
-        // 1. Record types of inputs, real and missing.
-        //      - For each one, note absent and excess arguments.
-        //      - If type spec requires argument that is not present: Insert "ConstantWRT" correction / dummy argument.
-        //      - If primitive is wrong, insert cast.
-        //      - If arguments are specified that are not in type spec, absorb it into "excess" arguments that parameterize this computation.
-        // 2. Create output type:
-        //      - Primitive: primitive of desired output type.
-        //      - Arguments: union of excess arguments of inputs, unioned with spec'd arguments of output
-        //      -
+        let output_type_notes = 'block: {
+            // Steps:
+            // 1. Record types of inputs, real and missing.
+            //      - For each one, note absent and excess arguments.
+            //      - If type spec requires argument that is not present: Insert "ConstantWRT" correction / dummy argument.
+            //      - If primitive is wrong, insert cast.
+            //      - If arguments are specified that are not in type spec, absorb it into "excess" arguments that parameterize this computation.
+            // 2. Create output type:
+            //      - Primitive: primitive of desired output type.
+            //      - Arguments: union of excess arguments of inputs, unioned with spec'd arguments of output
+            //      -
 
-        // Question: How to handle two excess input arguments with same name but different arguments?
-        // For now: Just fail.
-        // Possible solution: Intersect them / pick the 'narrowest' form / defer to constant functions basically.
-        // Potential pain point: Inserting "constant wrt"s to allow the narrower inputs to extend to the broader uses.
+            // Question: How to handle two excess input arguments with same name but different arguments?
+            // For now: Just fail.
+            // Possible solution: Intersect them / pick the 'narrowest' form / defer to constant functions basically.
+            // Potential pain point: Inserting "constant wrt"s to allow the narrower inputs to extend to the broader uses.
 
-        //let mut input_types: Vec<ValueType> = vec![];
-        let mut excess_input_args: HashMap<String, ValueType> = HashMap::new();
+            //let mut input_types: Vec<ValueType> = vec![];
+            let mut excess_input_args: HashMap<String, ValueType> = HashMap::new();
 
-        for i in 0..node_type.inputs.len() {
-            let specd_input_type = &node_type.inputs[i].value_type;
-            // This function call will insert "Constant WRT"s and casts as-needed, so that provided_input_type is always a superset of specd. ??? Maybe???
-            let provided_input_type = self.analyze_single_input(
-                graph,
-                NodeInputReference {
-                    source_node: node_ref,
-                    input_ind: i,
-                },
-            );
+            for i in 0..node_type.inputs.len() {
+                let specd_input_type = &node_type.inputs[i].value_type;
+                // This function call will insert "Constant WRT"s and casts as-needed, so that provided_input_type is always a superset of specd. ??? Maybe???
+                let provided_input_type = self.analyze_single_input(
+                    graph,
+                    NodeInputReference {
+                        source_node: node_ref,
+                        input_ind: i,
+                    },
+                );
 
-            for (name, typ) in &provided_input_type.formal_type.inputs {
-                if specd_input_type.inputs.contains_key(name) {
-                    continue;
-                }
+                let provided_input_type = match provided_input_type {
+                    Ok(a) => a,
+                    Err(e) => break 'block Err(e),
+                };
 
-                let slot = excess_input_args.entry(name.clone());
-                slot.and_modify(|curr| {
-                    if *curr != **typ {
-                        panic!("Two arguments with same name and different inputs. Might change behavior later to be narrowing.")
+                for (name, typ) in &provided_input_type.formal_type.inputs {
+                    if specd_input_type.inputs.contains_key(name) {
+                        continue;
                     }
-                }).or_insert_with(|| *typ.clone());
-            }
-        }
 
-        let inputs_parameterized_by = excess_input_args.clone();
-
-        let mut output_formal_args = excess_input_args;
-
-        let specd_output_args: HashMap<String, ValueType> = output_type
-            .value_type
-            .inputs
-            .iter()
-            .map(|f| (f.0.clone(), *f.1.clone()))
-            .collect();
-
-        for output_inp in &output_type.value_type.inputs {
-            let slot = output_formal_args.entry(output_inp.0.clone());
-            slot.and_modify(|curr| {
-                if *curr != **output_inp.1 {
-                    // This SHOULD be okay, because it's actually two evaluation steps (first to deparameterize the output and second to evaluate it.)
-                    // I think?
-                    panic!("Input and output arguments with same name and different inputs. WILL change behavior later.");
+                    let slot = excess_input_args.entry(name.clone());
+                    match slot {
+                        std::collections::hash_map::Entry::Occupied(occupied_entry) => {
+                            let curr = occupied_entry.get();
+                            if *curr != **typ {
+                                break 'block Err(TypeError {
+                            message: "Two arguments with same name and different inputs. Might change behavior later to be narrowing.".to_string()
+                        });
+                                //panic!("Two arguments with same name and different inputs. Might change behavior later to be narrowing.")
+                            }
+                        }
+                        std::collections::hash_map::Entry::Vacant(vacant_entry) => {
+                            vacant_entry.insert(*typ.clone());
+                        }
+                    };
                 }
+            }
+
+            let inputs_parameterized_by = excess_input_args.clone();
+
+            let mut output_formal_args = excess_input_args;
+
+            let specd_output_args: HashMap<String, ValueType> = output_type
+                .value_type
+                .inputs
+                .iter()
+                .map(|f| (f.0.clone(), *f.1.clone()))
+                .collect();
+
+            for output_inp in &output_type.value_type.inputs {
+                let slot = output_formal_args.entry(output_inp.0.clone());
+                match slot {
+                    std::collections::hash_map::Entry::Occupied(occupied_entry) => {
+                        let curr = occupied_entry.get();
+                        // This SHOULD be okay, because it's actually two evaluation steps (first to deparameterize the output and second to evaluate it.)
+                        // I think?
+                        if *curr != **output_inp.1 {
+                            break 'block Err(TypeError { message: "Input and output arguments with same name and different inputs. WILL change behavior later.".to_string() });
+                        }
+                    }
+                    std::collections::hash_map::Entry::Vacant(vacant_entry) => {
+                        vacant_entry.insert(*output_inp.1.clone());
+                    }
+                };
+            }
+
+            let actual_output_type = ValueType {
+                inputs: output_formal_args
+                    .into_iter()
+                    .map(|f| (f.0, Box::new(f.1)))
+                    .collect(),
+                output: output_type.value_type.output,
+            };
+
+            Ok(OutputTypeNotes {
+                formal_type: actual_output_type,
+                step_computation_requires: specd_output_args,
+                inputs_parameterized_by,
             })
-            .or_insert_with(|| *output_inp.1.clone());
-        }
-
-        let actual_output_type = ValueType {
-            inputs: output_formal_args
-                .into_iter()
-                .map(|f| (f.0, Box::new(f.1)))
-                .collect(),
-            output: output_type.value_type.output,
-        };
-
-        let output_type_notes = OutputTypeNotes {
-            formal_type: actual_output_type,
-            step_computation_requires: specd_output_args,
-            inputs_parameterized_by,
         };
 
         self.output_type_notes
@@ -312,7 +355,7 @@ impl NodeGraphFormalTypeAnalysis {
             .filter(|(a, b)| graph.types.node_types.get(&b.node_type).unwrap().name == "Out")
             .collect();
         for i in output {
-            analysis.analyze_single_input(
+            let _ = analysis.analyze_single_input(
                 graph,
                 NodeInputReference {
                     source_node: i.0,
@@ -322,18 +365,4 @@ impl NodeGraphFormalTypeAnalysis {
         }
         analysis
     }
-}
-
-pub struct Expression {
-    core: ExpressionCore,
-    formal_type: ValueType,
-}
-
-pub enum ExpressionCore {
-    TypeSystemStep(TypeCorrectionStep),
-}
-
-pub enum TypeCorrectionStep {
-    ConstantWRTArgument(String, ValueType, Box<Expression>),
-    AbsorbArgumentsLeftward(Box<Expression>),
 }

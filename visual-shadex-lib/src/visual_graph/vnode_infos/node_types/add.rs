@@ -1,4 +1,7 @@
-use shadex_backend::nodegraph::{InputInfo, NodeTypeInfo, OutputInfo, PrimitiveType, ValueType};
+use shadex_backend::{
+    execution::typechecking::typetypes::{PrimitiveType, ValueType},
+    nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
+};
 
 use crate::visual_graph::VisualNodeInfo;
 

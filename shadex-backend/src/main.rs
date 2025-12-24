@@ -11,7 +11,7 @@ fn main() {
     let full_output = parse_whole_input(input_text.as_bytes()).unwrap().1;
     let constructed = construct_node_graph(universe, full_output).unwrap();
 
-    let mut typechecker = typechecking::NodeGraphFormalTypeAnalysis::analyze(&constructed);
+    let typechecker = typechecking::NodeGraphFormalTypeAnalysis::analyze(&constructed);
     println!("{:#?}", constructed);
     println!("{:#?}", typechecker);
 }

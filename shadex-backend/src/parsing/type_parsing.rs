@@ -11,8 +11,9 @@ use nom::{
     sequence::{self, delimited, preceded, separated_pair, terminated},
 };
 
-use crate::nodegraph::{
-    InputInfo, NodeTypeInfo, OutputInfo, PrimitiveType, TypeUniverse, U32Boundedness, ValueType,
+use crate::{
+    execution::typechecking::typetypes::{PrimitiveType, U32Boundedness, ValueType},
+    nodegraph::{InputInfo, NodeTypeInfo, OutputInfo, TypeUniverse},
 };
 
 use super::{parse_identifier, ws};
@@ -65,20 +66,10 @@ fn parse_primitive_type<'a>()
         total_tag("i32").map(|_| PrimitiveType::I32),
         total_tag("f32").map(|_| PrimitiveType::F32),
         (total_tag("u32"), opt(parse_u32_bound())).map(|(_, bd)| {
-            PrimitiveType::U32(bd.map_or(
-                U32Boundedness::Unbounded,
-                crate::nodegraph::U32Boundedness::Bounded,
-            ))
+            PrimitiveType::U32(bd.map_or(U32Boundedness::Unbounded, U32Boundedness::Bounded))
         }),
         parse_u32_bound().map(|num| PrimitiveType::U32(U32Boundedness::Bounded(num))),
     )))
-}
-
-fn primitive_to_constant_fn(typ: PrimitiveType) -> ValueType {
-    ValueType {
-        inputs: HashMap::new(),
-        output: typ,
-    }
 }
 
 fn parse_fn_type() -> FnTypeParser {
@@ -87,7 +78,7 @@ fn parse_fn_type() -> FnTypeParser {
 
 fn parse_arg_type<'a>() -> impl Parser<&'a [u8], Output = ValueType, Error = Error<&'a [u8]>> {
     alt((
-        parse_primitive_type().map(primitive_to_constant_fn),
+        parse_primitive_type().map(ValueType::primitive),
         delimited(ws(tag("(")), parse_fn_type(), ws(tag(")"))),
     ))
 }
@@ -95,7 +86,7 @@ fn parse_arg_type<'a>() -> impl Parser<&'a [u8], Output = ValueType, Error = Err
 pub fn parse_sugar_fn_type<'a>()
 -> impl Parser<&'a [u8], Output = ValueType, Error = Error<&'a [u8]>> {
     ws(alt((
-        parse_primitive_type().map(primitive_to_constant_fn),
+        parse_primitive_type().map(ValueType::primitive),
         parse_fn_type(),
     )))
 }

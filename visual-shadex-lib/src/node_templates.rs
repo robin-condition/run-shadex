@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use shadex_backend::nodegraph::{NodeTypeInfo, PrimitiveType, U32Boundedness, ValueType};
+use shadex_backend::{
+    execution::typechecking::typetypes::{PrimitiveType, ValueType, U32Boundedness},
+    nodegraph::NodeTypeInfo,
+};
 
 // TODO: Replace this with some kind of "template-reduction-time" expression
 type TemplatePlaceholderIdentifier = String;

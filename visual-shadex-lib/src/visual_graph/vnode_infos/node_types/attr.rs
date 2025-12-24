@@ -1,4 +1,7 @@
-use shadex_backend::nodegraph::{InputInfo, NodeTypeInfo, OutputInfo, PrimitiveType, ValueType};
+use shadex_backend::{
+    execution::typechecking::typetypes::{PrimitiveType, ValueType},
+    nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
+};
 
 use crate::visual_graph::VisualNodeInfo;
 
@@ -24,11 +27,13 @@ impl VisualNodeInfo for AttrInfo {
     fn get_shadex_type(&self) -> NodeTypeInfo {
         NodeTypeInfo {
             name: "test".to_string(),
-            inputs: vec![
-                InputInfo { name: self.name.clone(), value_type: Box::new(ValueType::primitive(PrimitiveType::F32)) }
-            ],
+            inputs: vec![InputInfo {
+                name: self.name.clone(),
+                value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
+            }],
             outputs: vec![OutputInfo {
-                name: self.name.clone(), value_type: Box::new(ValueType::primitive(PrimitiveType::F32))
+                name: self.name.clone(),
+                value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
             }],
         }
     }

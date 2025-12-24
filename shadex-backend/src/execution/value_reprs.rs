@@ -11,7 +11,7 @@ pub struct InputSet {
     pub params: HashTrieMap<String, ParameterValueSet>,
 }
 
-struct InputSetIterator<'a> {
+pub struct InputSetIterator<'a> {
     order: Vec<&'a str>,
     lens: Vec<usize>,
     cur: Option<MultiValueIndex<'a>>,
