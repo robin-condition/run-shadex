@@ -1,27 +1,14 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use shadex_backend::{
-    execution::typechecking::typetypes::{PrimitiveType, ValueType, U32Boundedness},
     nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
+    typechecking::typetypes::{PrimitiveType, U32Boundedness, ValueType},
 };
 
 use crate::visual_graph::VisualNodeInfo;
 
-pub struct OutInfo {}
-impl OutInfo {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl VisualNodeInfo for OutInfo {
-    fn show(&mut self, ui: &mut egui::Ui) -> bool {
-        false
-    }
-
-    fn get_shadex_type(&self) -> NodeTypeInfo {
-        NodeTypeInfo {
-            name: "test".to_string(),
+thread_local! {
+    static OUT_TYPE: Rc<NodeTypeInfo> = Rc::new(NodeTypeInfo {
             inputs: vec![InputInfo {
                 name: "val".to_string(),
                 value_type: Box::new(ValueType {
@@ -51,7 +38,23 @@ impl VisualNodeInfo for OutInfo {
                 }),
             }],
             outputs: Vec::new(),
-        }
+        });
+}
+
+pub struct OutInfo {}
+impl OutInfo {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl VisualNodeInfo for OutInfo {
+    fn show(&mut self, ui: &mut egui::Ui) -> bool {
+        false
+    }
+
+    fn get_shadex_type(&self) -> Rc<NodeTypeInfo> {
+        OUT_TYPE.with(Rc::<NodeTypeInfo>::clone)
     }
 
     fn get_name(&self) -> &str {

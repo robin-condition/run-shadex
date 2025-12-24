@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use shadex_backend::{
-    execution::typechecking::typetypes::{PrimitiveType, ValueType},
     nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
+    typechecking::typetypes::{PrimitiveType, ValueType},
 };
 
 use crate::visual_graph::VisualNodeInfo;
@@ -24,9 +26,8 @@ impl VisualNodeInfo for AttrInfo {
             | ui.text_edit_singleline(&mut self.type_str).changed()
     }
 
-    fn get_shadex_type(&self) -> NodeTypeInfo {
-        NodeTypeInfo {
-            name: "test".to_string(),
+    fn get_shadex_type(&self) -> Rc<NodeTypeInfo> {
+        Rc::new(NodeTypeInfo {
             inputs: vec![InputInfo {
                 name: self.name.clone(),
                 value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
@@ -35,7 +36,7 @@ impl VisualNodeInfo for AttrInfo {
                 name: self.name.clone(),
                 value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
             }],
-        }
+        })
     }
 
     fn get_name(&self) -> &str {

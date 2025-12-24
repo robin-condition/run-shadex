@@ -1,6 +1,9 @@
-use shadex_backend::{execution::typechecking::NodeGraphFormalTypeAnalysis, nodegraph::NodeGraph};
+use shadex_backend::{
+    nodegraph::{NodeGraph, TypedNodeGraph},
+    typechecking::NodeGraphFormalTypeAnalysis,
+};
 
 pub struct FormalGraph {
-    pub formal_graph: NodeGraph,
+    pub formal_graph: TypedNodeGraph,
     pub typecheck: Option<NodeGraphFormalTypeAnalysis>,
 }

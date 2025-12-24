@@ -1,4 +1,4 @@
-use std::{collections::HashMap, process::Output};
+use std::{collections::HashMap, process::Output, rc::Rc};
 
 use nom::{
     Parser,
@@ -12,8 +12,9 @@ use nom::{
 };
 
 use crate::{
-    execution::typechecking::typetypes::{PrimitiveType, U32Boundedness, ValueType},
-    nodegraph::{InputInfo, NodeTypeInfo, OutputInfo, TypeUniverse},
+    nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
+    parsing::SimpleTypeWorld,
+    typechecking::typetypes::{PrimitiveType, U32Boundedness, ValueType},
 };
 
 use super::{parse_identifier, ws};
@@ -99,7 +100,7 @@ fn parse_named_value_type<'a>()
 }
 
 fn parse_node_type_declaration<'a>()
--> impl Parser<&'a [u8], Output = NodeTypeInfo, Error = Error<&'a [u8]>> {
+-> impl Parser<&'a [u8], Output = (String, NodeTypeInfo), Error = Error<&'a [u8]>> {
     let inputs_parser = separated_list0(
         ws(tag(";")),
         parse_named_value_type().map(|(n, content)| InputInfo {
@@ -121,28 +122,24 @@ fn parse_node_type_declaration<'a>()
 
     let assignment = separated_pair(fn_name, ws(tag("=")), fn_details);
 
-    assignment.map(|(name, (inputs, outputs))| NodeTypeInfo {
-        name: name,
-        inputs,
-        outputs,
-    })
+    assignment.map(|(name, (inputs, outputs))| (name, NodeTypeInfo { inputs, outputs }))
 }
 
 pub fn parse_node_type_declarations<'a>()
--> impl Parser<&'a [u8], Output = Vec<NodeTypeInfo>, Error = Error<&'a [u8]>> {
+-> impl Parser<&'a [u8], Output = Vec<(String, NodeTypeInfo)>, Error = Error<&'a [u8]>> {
     many0(ws(parse_node_type_declaration()))
 }
 
-pub fn parse_type_universe(content: &str) -> Result<TypeUniverse, ()> {
+pub fn parse_type_world(content: &str) -> Result<SimpleTypeWorld, ()> {
     let mut parser = terminated(parse_node_type_declarations(), eof);
     let res = match parser.parse_complete(content.as_bytes()) {
         Ok((_, ok)) => ok,
         Err(a) => panic!("{a}"),
     };
 
-    let mut uni = TypeUniverse::new();
+    let mut uni = SimpleTypeWorld::new();
     for i in res {
-        uni.create_new_type(i);
+        uni.node_types.insert(i.0, Rc::new(i.1));
     }
 
     Ok(uni)

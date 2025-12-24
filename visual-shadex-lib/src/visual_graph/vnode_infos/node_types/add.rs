@@ -1,9 +1,31 @@
+use std::rc::Rc;
+
 use shadex_backend::{
-    execution::typechecking::typetypes::{PrimitiveType, ValueType},
     nodegraph::{InputInfo, NodeTypeInfo, OutputInfo},
+    typechecking::typetypes::{PrimitiveType, ValueType},
 };
 
 use crate::visual_graph::VisualNodeInfo;
+
+thread_local! {
+    static ADD_TYPE: Rc<NodeTypeInfo> =
+        Rc::new(NodeTypeInfo {
+                inputs: vec![
+                    InputInfo {
+                        name: "a".to_string(),
+                        value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
+                    },
+                    InputInfo {
+                        name: "b".to_string(),
+                        value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
+                    },
+                ],
+                outputs: vec![OutputInfo {
+                    name: "value".to_string(),
+                    value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
+                }],
+            });
+}
 
 pub struct AddInfo {}
 impl AddInfo {
@@ -17,24 +39,8 @@ impl VisualNodeInfo for AddInfo {
         false
     }
 
-    fn get_shadex_type(&self) -> NodeTypeInfo {
-        NodeTypeInfo {
-            name: "add".to_string(),
-            inputs: vec![
-                InputInfo {
-                    name: "a".to_string(),
-                    value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
-                },
-                InputInfo {
-                    name: "b".to_string(),
-                    value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
-                },
-            ],
-            outputs: vec![OutputInfo {
-                name: "value".to_string(),
-                value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
-            }],
-        }
+    fn get_shadex_type(&self) -> Rc<NodeTypeInfo> {
+        ADD_TYPE.with(Rc::<NodeTypeInfo>::clone)
     }
 
     fn get_name(&self) -> &str {

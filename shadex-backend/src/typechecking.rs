@@ -2,10 +2,10 @@ use core::panic;
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    execution::typechecking::typetypes::{
+    nodegraph::{NodeGraph, NodeRef, ValueRef},
+    typechecking::typetypes::{
         MaybeValueType, PrimitiveType, TypeError, U32Boundedness, ValueType,
     },
-    nodegraph::{NodeGraph, NodeRef, ValueRef},
 };
 
 pub mod typetypes;
@@ -103,10 +103,13 @@ pub struct NodeGraphFormalTypeAnalysis {
     input_type_notes: HashMap<NodeInputReference, MaybeInputTypeNotes>,
 }
 
+type TypedNodeGraph = crate::nodegraph::TypedNodeGraph;
+type TypedNode = crate::nodegraph::TypedNode;
+
 impl NodeGraphFormalTypeAnalysis {
     fn analyze_single_input(
         &mut self,
-        graph: &NodeGraph,
+        graph: &TypedNodeGraph,
         inp_ref: NodeInputReference,
     ) -> MaybeInputTypeNotes {
         if let Some(res) = self.input_type_notes.get(&inp_ref) {
@@ -114,7 +117,7 @@ impl NodeGraphFormalTypeAnalysis {
         }
 
         let node = graph.get_node(inp_ref.source_node).unwrap();
-        let node_type = graph.types.node_types.get(&node.node_type).unwrap();
+        let node_type = &node.annotation;
 
         let specd_input_type = &node_type.inputs[inp_ref.input_ind].value_type;
 
@@ -214,7 +217,7 @@ impl NodeGraphFormalTypeAnalysis {
 
     fn analyze_single_output(
         &mut self,
-        graph: &NodeGraph,
+        graph: &TypedNodeGraph,
         val_ref: ValueRef,
     ) -> MaybeOutputTypeNotes {
         // Check existing analysis.
@@ -232,7 +235,7 @@ impl NodeGraphFormalTypeAnalysis {
         let node = graph.get_node(node_ref).unwrap();
 
         // Original node type
-        let node_type = graph.types.node_types.get(&node.node_type).unwrap();
+        let node_type = &node.annotation;
 
         // Original output type
         let output_type = &node_type.outputs[output_index];
@@ -345,23 +348,32 @@ impl NodeGraphFormalTypeAnalysis {
         output_type_notes
     }
 
-    pub fn analyze(graph: &NodeGraph) -> NodeGraphFormalTypeAnalysis {
+    pub fn analyze(graph: &TypedNodeGraph) -> NodeGraphFormalTypeAnalysis {
         let mut analysis = NodeGraphFormalTypeAnalysis {
             output_type_notes: HashMap::new(),
             input_type_notes: HashMap::new(),
         };
-        let output: Vec<(NodeRef, &crate::nodegraph::Node)> = graph
-            .iter_nodes()
-            .filter(|(a, b)| graph.types.node_types.get(&b.node_type).unwrap().name == "Out")
-            .collect();
-        for i in output {
-            let _ = analysis.analyze_single_input(
-                graph,
-                NodeInputReference {
-                    source_node: i.0,
-                    input_ind: 0,
-                },
-            );
+        let nodes: Vec<(NodeRef, &TypedNode)> = graph.iter_nodes().collect();
+        for i in nodes {
+            for inp in 0..i.1.annotation.inputs.len() {
+                let _ = analysis.analyze_single_input(
+                    graph,
+                    NodeInputReference {
+                        source_node: i.0,
+                        input_ind: inp,
+                    },
+                );
+            }
+
+            for outp in 0..i.1.annotation.outputs.len() {
+                let _ = analysis.analyze_single_output(
+                    graph,
+                    ValueRef {
+                        node: i.0,
+                        output_index: outp,
+                    },
+                );
+            }
         }
         analysis
     }

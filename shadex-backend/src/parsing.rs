@@ -17,9 +17,21 @@ use nom::{
 };
 
 use crate::nodegraph::{
-    InputInfo, Node, NodeGraph, NodeRef, NodeTypeInfo, NodeTypeRef, OutputInfo, TypeUniverse,
-    ValueRef,
+    InputInfo, Node, NodeAnnotation, NodeGraph, NodeRef, NodeTypeInfo, NodeTypeRc, NodeTypeRef,
+    OutputInfo, TypedNodeGraph, ValueRef,
 };
+
+pub struct SimpleTypeWorld {
+    pub node_types: HashMap<String, NodeTypeRc>,
+}
+
+impl SimpleTypeWorld {
+    pub fn new() -> Self {
+        Self {
+            node_types: HashMap::new(),
+        }
+    }
+}
 
 #[derive(Clone)]
 struct ParseState {
@@ -118,14 +130,15 @@ enum Value {
 fn process_node_expr(
     expr: NodeExpression,
     state: &mut ParseState,
-    graph: &mut NodeGraph,
+    graph: &mut TypedNodeGraph,
+    types: &SimpleTypeWorld,
 ) -> Result<Value, ()> {
     match expr {
         NodeExpression::Identifier(name) => state.named_vars.get(&name).cloned().ok_or(()),
         NodeExpression::FloatLiteral(v) => Ok(Value::Float(v)),
         NodeExpression::IntLiteral(i) => Ok(Value::Int(i)),
         NodeExpression::Assignment(name, node_expression) => {
-            let rhs = process_node_expr(*node_expression, state, graph)?;
+            let rhs = process_node_expr(*node_expression, state, graph, types)?;
             state.named_vars.insert(name, rhs);
             Ok(rhs)
         }
@@ -133,7 +146,7 @@ fn process_node_expr(
             let args: Result<Vec<Option<ValueRef>>, ()> = node_expressions
                 .into_iter()
                 .map(|expr| {
-                    let _arg = process_node_expr(expr, state, graph)?;
+                    let _arg = process_node_expr(expr, state, graph, types)?;
                     match _arg {
                         Value::ValueRef(vr) => Ok(vr),
                         _ => return Err(()),
@@ -141,15 +154,10 @@ fn process_node_expr(
                 })
                 .collect();
 
-            let (type_ref, _) = graph
-                .types
-                .node_types
-                .iter()
-                .find(|(_, info)| info.name == typename.as_str())
-                .ok_or(())?;
+            let type_ref = types.node_types.get(&typename).ok_or(())?;
 
             let node = Node {
-                node_type: type_ref.clone(),
+                annotation: type_ref.clone(),
                 inputs: args?,
                 extra_data: data,
             };
@@ -159,7 +167,7 @@ fn process_node_expr(
             Ok(Value::NodeRef(node_id))
         }
         NodeExpression::Output(node_expression, output_name) => {
-            let node_value = process_node_expr(*node_expression, state, graph)?;
+            let node_value = process_node_expr(*node_expression, state, graph, types)?;
             let node_ref = match node_value {
                 Value::NodeRef(nr) => nr,
                 _ => return Err(()),
@@ -167,7 +175,7 @@ fn process_node_expr(
 
             let node_info = graph.get_node(node_ref).ok_or(())?;
 
-            let type_info = graph.types.node_types.get(&node_info.node_type).ok_or(())?;
+            let type_info = &node_info.annotation;
 
             let output_ind = type_info
                 .outputs
@@ -185,17 +193,17 @@ fn process_node_expr(
 }
 
 pub fn construct_node_graph(
-    types: TypeUniverse,
+    types: &SimpleTypeWorld,
     exprs: Vec<NodeExpression>,
-) -> Result<NodeGraph, ()> {
+) -> Result<TypedNodeGraph, ()> {
     let mut parse_state = ParseState {
         named_vars: HashMap::new(),
     };
 
-    let mut graph = NodeGraph::new(types);
+    let mut graph = TypedNodeGraph::new();
 
     for expr in exprs {
-        process_node_expr(expr, &mut parse_state, &mut graph)?;
+        process_node_expr(expr, &mut parse_state, &mut graph, types)?;
     }
 
     Ok(graph)

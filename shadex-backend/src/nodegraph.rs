@@ -1,6 +1,8 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, rc::Rc};
 
-use crate::execution::typechecking::typetypes::ValueType;
+use crate::typechecking::typetypes::ValueType;
+
+pub trait NodeAnnotation: Clone + std::fmt::Debug {}
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct NodeRef {
@@ -32,69 +34,49 @@ pub struct OutputInfo {
 
 #[derive(Debug)]
 pub struct NodeTypeInfo {
-    pub name: String,
     pub inputs: Vec<InputInfo>,
     pub outputs: Vec<OutputInfo>,
 }
 
+pub type NodeTypeRc = Rc<NodeTypeInfo>;
+impl NodeAnnotation for NodeTypeRc {}
+
+pub type TypedNode = Node<NodeTypeRc>;
+pub type TypedNodeGraph = NodeGraph<NodeTypeRc>;
+
 #[derive(Debug)]
-pub struct Node {
-    pub node_type: NodeTypeRef,
+pub struct Node<T: NodeAnnotation> {
+    pub annotation: T,
     pub inputs: Vec<Option<ValueRef>>,
     pub extra_data: Option<String>,
 }
 
 #[derive(Debug)]
-pub struct TypeUniverse {
-    pub node_types: HashMap<NodeTypeRef, NodeTypeInfo>,
-    next_unclaimed_id: usize,
-}
-
-impl TypeUniverse {
-    pub fn new() -> Self {
-        Self {
-            node_types: HashMap::new(),
-            next_unclaimed_id: 0,
-        }
-    }
-
-    pub fn create_new_type(&mut self, type_info: NodeTypeInfo) -> NodeTypeRef {
-        let id = self.next_unclaimed_id;
-        self.next_unclaimed_id = self.next_unclaimed_id + 1;
-        let typeref = NodeTypeRef::Custom(id);
-        self.node_types.insert(typeref.clone(), type_info);
-        typeref
-    }
-}
-
-#[derive(Debug)]
-pub struct NodeGraph {
-    pub types: TypeUniverse,
-    nodes: HashMap<usize, Node>,
+pub struct NodeGraph<T: NodeAnnotation> {
+    nodes: HashMap<usize, Node<T>>,
     next_id: usize,
 }
 
-impl NodeGraph {
-    pub fn add_node(&mut self, node: Node) -> NodeRef {
+impl<T: NodeAnnotation> NodeGraph<T> {
+    pub fn add_node(&mut self, node: Node<T>) -> NodeRef {
         let node_id = self.next_id;
         self.nodes.insert(node_id, node);
         self.next_id += 1;
         NodeRef { id: node_id }
     }
 
-    pub fn get_node(&self, node_ref: NodeRef) -> Option<&Node> {
+    pub fn get_node(&self, node_ref: NodeRef) -> Option<&Node<T>> {
         self.nodes.get(&node_ref.id)
     }
 
-    pub fn new(types: TypeUniverse) -> Self {
+    pub fn new() -> Self {
         NodeGraph {
-            types,
             nodes: HashMap::new(),
             next_id: 0,
         }
     }
 
-    pub fn iter_nodes(&self) -> impl Iterator<Item = (NodeRef, &Node)> {
+    pub fn iter_nodes(&self) -> impl Iterator<Item = (NodeRef, &Node<T>)> {
         self.nodes.iter().map(|f| (NodeRef { id: *f.0 }, f.1))
     }
 }

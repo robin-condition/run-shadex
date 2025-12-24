@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use shadex_backend::{
-    execution::typechecking::typetypes::{PrimitiveType, ValueType, U32Boundedness},
     nodegraph::NodeTypeInfo,
+    typechecking::typetypes::{PrimitiveType, U32Boundedness, ValueType},
 };
 
 // TODO: Replace this with some kind of "template-reduction-time" expression

@@ -1,9 +1,21 @@
+use std::rc::Rc;
+
 use shadex_backend::{
-    execution::typechecking::typetypes::{PrimitiveType, ValueType},
     nodegraph::{NodeTypeInfo, OutputInfo},
+    typechecking::typetypes::{PrimitiveType, ValueType},
 };
 
 use crate::visual_graph::VisualNodeInfo;
+
+thread_local! {
+    static CONST_TYPE: Rc<NodeTypeInfo> = Rc::new(NodeTypeInfo {
+            inputs: Vec::new(),
+            outputs: vec![OutputInfo {
+                name: "value".to_string(),
+                value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
+            }],
+        });
+}
 
 pub struct ConstantInfo {
     pub val: f32,
@@ -24,15 +36,8 @@ impl VisualNodeInfo for ConstantInfo {
         .changed()
     }
 
-    fn get_shadex_type(&self) -> NodeTypeInfo {
-        NodeTypeInfo {
-            name: "test".to_string(),
-            inputs: Vec::new(),
-            outputs: vec![OutputInfo {
-                name: "value".to_string(),
-                value_type: Box::new(ValueType::primitive(PrimitiveType::F32)),
-            }],
-        }
+    fn get_shadex_type(&self) -> Rc<NodeTypeInfo> {
+        CONST_TYPE.with(Rc::<NodeTypeInfo>::clone)
     }
 
     fn get_name(&self) -> &str {

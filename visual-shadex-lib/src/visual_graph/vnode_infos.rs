@@ -4,7 +4,7 @@ use egui::{
     Color32, FontId, InnerResponse, Label, Pos2, Rect, RichText, Sense, Separator, Shape, Stroke,
     Vec2, epaint::RectShape, layers::PaintList, vec2,
 };
-use shadex_backend::nodegraph::{InputInfo, NodeTypeInfo, NodeTypeRef, OutputInfo, TypeUniverse};
+use shadex_backend::nodegraph::{InputInfo, NodeTypeInfo, NodeTypeRef, OutputInfo};
 
 pub mod node_types;
 pub use node_types::*;
@@ -16,7 +16,7 @@ use crate::{
 
 pub trait VisualNodeInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool;
-    fn get_shadex_type(&self) -> NodeTypeInfo;
+    fn get_shadex_type(&self) -> Rc<NodeTypeInfo>;
     fn get_name(&self) -> &str;
 }
 
@@ -151,7 +151,7 @@ impl VisualNode {
         let idx = ui.painter().add(Shape::Noop);
         let changed = &mut false;
 
-        self.formal_type = Some(Rc::new(self.data.get_shadex_type()));
+        self.formal_type = Some(self.data.get_shadex_type());
         if let Some(formal_type) = &self.formal_type {
             self.input_ports.resize(
                 formal_type.inputs.len(),
