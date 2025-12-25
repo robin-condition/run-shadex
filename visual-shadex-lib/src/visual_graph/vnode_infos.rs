@@ -284,6 +284,7 @@ fn draw_input_port(
     mode: &mut InteractionState,
     any_drag_stopped: &mut bool,
     mouse_pos: &mut Option<Pos2>,
+    changed: &mut bool,
 
     formal_graph: Option<&FormalGraph>,
 ) {
@@ -321,7 +322,13 @@ fn draw_input_port(
         }
 
         if resp.drag_started() {
-            mode.dragging = crate::DraggingState::DraggingLineFromInputPort(vref.clone(), None);
+            if let Some(src) = &vport.input_source {
+                mode.dragging = crate::DraggingState::DraggingLineFromOutputPort(None, *src);
+                vport.input_source = None;
+                *changed = true;
+            } else {
+                mode.dragging = crate::DraggingState::DraggingLineFromInputPort(vref.clone(), None);
+            }
         }
 
         *mouse_pos = mouse_pos.or(resp.interact_pointer_pos());
@@ -486,6 +493,7 @@ impl VisualNode {
                                         mode,
                                         any_drag_stopped,
                                         mouse_pos,
+                                        changed,
                                         formal_graph,
                                     );
                                 }
@@ -493,7 +501,7 @@ impl VisualNode {
                         });
                         ui.add_space(5f32);
                         ui.vertical(|ui| {
-                            *changed = self.data.show(ui);
+                            *changed = self.data.show(ui) | *changed;
                         });
 
                         ui.add_space(5f32);
