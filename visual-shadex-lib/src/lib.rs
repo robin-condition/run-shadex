@@ -95,12 +95,17 @@ pub fn visual_shadex_test(
     mode: &mut InteractionState,
 ) {
     let mut executor = shadex_backend::execution::Executor::default();
-    if let Ok(graph) = &graphstate.formal_graph {
+    let text = if let Ok(graph) = &graphstate.formal_graph {
         let res = executor.run(&graph.formal_graph, &graph.typecheck);
         if let Ok(prog) = res {
-            _ = ui.code(prog.text);
+            prog.text
+        } else {
+            "No compilation".to_string()
         }
-    }
+    } else {
+        "No compilation".to_string()
+    };
+    _ = ui.code(text);
 
     let mut vrect = viewstate.rect;
     egui::containers::Scene::new()
