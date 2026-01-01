@@ -7,6 +7,7 @@ use shadex_backend::{
 
 use crate::visual_graph::VisualNodeInfo;
 
+/*
 thread_local! {
     static CONST_TYPE: FallibleNodeTypeRc = Ok(Rc::new(NodeTypeInfo {
             inputs: Vec::new(),
@@ -16,6 +17,7 @@ thread_local! {
             }],
         }));
 }
+*/
 
 pub struct ConstantInfo {
     pub val: f32,
@@ -37,7 +39,15 @@ impl VisualNodeInfo for ConstantInfo {
     }
 
     fn get_shadex_type(&self) -> FallibleNodeTypeRc {
-        CONST_TYPE.with(FallibleNodeTypeRc::clone)
+        //CONST_TYPE.with(FallibleNodeTypeRc::clone)
+        Ok(Rc::new(NodeTypeInfo {
+            inputs: Vec::new(),
+            outputs: vec![OutputInfo {
+                name: "value".to_string(),
+                value_type: Ok(ValueType::primitive(PrimitiveType::F32)),
+            }],
+            annotation: shadex_backend::execution::ExecutionInformation::Constant(self.val),
+        }))
     }
 
     fn get_name(&self) -> &str {

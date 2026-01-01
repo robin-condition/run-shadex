@@ -38,6 +38,7 @@ thread_local! {
                 })
             }],
             outputs: Vec::new(),
+            annotation: shadex_backend::execution::ExecutionInformation::Out
         }));
 }
 

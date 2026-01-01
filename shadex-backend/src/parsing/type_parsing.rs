@@ -134,8 +134,16 @@ fn parse_node_type_declaration<'a>()
 
     let assignment = separated_pair(fn_name, ws(tag("=")), fn_details);
 
-    assignment
-        .map(|(name, (inputs, outputs))| (name, Ok(Rc::new(NodeTypeInfo { inputs, outputs }))))
+    assignment.map(|(name, (inputs, outputs))| {
+        (
+            name,
+            Ok(Rc::new(NodeTypeInfo {
+                inputs,
+                outputs,
+                annotation: crate::execution::ExecutionInformation::ERR,
+            })),
+        )
+    })
 }
 
 pub fn parse_node_type_declarations<'a>()

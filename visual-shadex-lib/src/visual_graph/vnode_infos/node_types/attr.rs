@@ -25,6 +25,7 @@ impl AttrInfo {
                 name: n.clone(),
                 value_type: typ,
             }],
+            annotation: shadex_backend::execution::ExecutionInformation::Attr(n.clone()),
         }))
     }
 

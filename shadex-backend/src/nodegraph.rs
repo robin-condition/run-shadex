@@ -1,8 +1,18 @@
-use std::{collections::HashMap, fmt::Display, rc::Rc};
+use std::{
+    collections::HashMap,
+    fmt::{Debug, Display},
+    rc::Rc,
+};
 
-use crate::typechecking::typetypes::{MaybeValueType, TypeError, ValueType};
+use crate::{
+    execution::ExecutionInformation,
+    typechecking::typetypes::{MaybeValueType, TypeError, ValueType},
+};
 
 pub trait NodeAnnotation: Clone + std::fmt::Debug {}
+pub trait NodeAnnotationHas<T>: NodeAnnotation {
+    fn get_t(&self) -> &T;
+}
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct NodeRef {
@@ -34,19 +44,33 @@ pub struct OutputInfo<T: PortTypeAnnotation> {
     pub value_type: T,
 }
 
+pub trait NodeTypeAnnotation: Debug {}
+
 #[derive(Debug)]
-pub struct NodeTypeInfo<T: PortTypeAnnotation> {
+pub struct NodeTypeInfo<T: PortTypeAnnotation, K: NodeTypeAnnotation> {
     pub inputs: Vec<InputInfo<T>>,
     pub outputs: Vec<OutputInfo<T>>,
+    pub annotation: K,
 }
 
-pub type FallibleNodeTypeRc = Result<Rc<NodeTypeInfo<MaybeValueType>>, TypeError>;
+pub type FallibleNodeTypeRc =
+    Result<Rc<NodeTypeInfo<MaybeValueType, ExecutionInformation>>, TypeError>;
 
 impl PortTypeAnnotation for Box<ValueType> {}
 impl PortTypeAnnotation for MaybeValueType {}
-pub type NodeTypeRc = Rc<NodeTypeInfo<Box<ValueType>>>;
+pub type NodeTypeRc = Rc<NodeTypeInfo<Box<ValueType>, ExecutionInformation>>;
 impl NodeAnnotation for NodeTypeRc {}
+impl NodeAnnotationHas<NodeTypeRc> for NodeTypeRc {
+    fn get_t(&self) -> &NodeTypeRc {
+        &self
+    }
+}
 impl NodeAnnotation for FallibleNodeTypeRc {}
+impl NodeAnnotationHas<FallibleNodeTypeRc> for FallibleNodeTypeRc {
+    fn get_t(&self) -> &FallibleNodeTypeRc {
+        &self
+    }
+}
 
 pub type TypedNode = Node<NodeTypeRc>;
 pub type TypedNodeGraph = NodeGraph<NodeTypeRc>;

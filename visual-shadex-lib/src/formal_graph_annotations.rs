@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use shadex_backend::{
-    nodegraph::{FallibleNodeTypeRc, NodeAnnotation, NodeGraph, NodeRef, TypedNodeGraph, ValueRef},
+    nodegraph::{
+        FallibleNodeTypeRc, NodeAnnotation, NodeAnnotationHas, NodeGraph, NodeRef, TypedNodeGraph,
+        ValueRef,
+    },
     typechecking::{
         NodeGraphFormalTypeAnalysis, NodeInputReference, typetypes::AccessibleFallibleType,
     },
@@ -16,9 +19,16 @@ pub struct MappedNodeAnnotation {
 }
 
 impl NodeAnnotation for MappedNodeAnnotation {}
+
 impl AccessibleFallibleType for MappedNodeAnnotation {
     fn fallible(&self) -> &FallibleNodeTypeRc {
         &self.type_info
+    }
+}
+
+impl NodeAnnotationHas<FallibleNodeTypeRc> for MappedNodeAnnotation {
+    fn get_t(&self) -> &FallibleNodeTypeRc {
+        self.fallible()
     }
 }
 

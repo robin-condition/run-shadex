@@ -94,7 +94,14 @@ pub fn visual_shadex_test(
     graphstate: &mut NodeGraphState,
     mode: &mut InteractionState,
 ) {
-    _ = ui.button("Hello from visual shadex lib!");
+    let mut executor = shadex_backend::execution::Executor::default();
+    if let Ok(graph) = &graphstate.formal_graph {
+        let res = executor.run(&graph.formal_graph, &graph.typecheck);
+        if let Ok(prog) = res {
+            _ = ui.code(prog.text);
+        }
+    }
+
     let mut vrect = viewstate.rect;
     egui::containers::Scene::new()
         .zoom_range(0.0..=5f32)

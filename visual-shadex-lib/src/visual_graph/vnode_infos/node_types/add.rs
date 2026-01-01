@@ -24,6 +24,7 @@ thread_local! {
                     name: "value".to_string(),
                     value_type: Ok(ValueType::primitive(PrimitiveType::F32)),
                 }],
+                annotation: shadex_backend::execution::ExecutionInformation::Add
             }));
 }
 
