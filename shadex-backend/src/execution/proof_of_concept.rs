@@ -50,6 +50,7 @@ pub enum ExecutionInformation {
     Attr(String),
     Out,
     ERR,
+    Vector3,
 }
 
 impl NodeTypeAnnotation for ExecutionInformation {}
@@ -95,6 +96,32 @@ impl Executor {
                 let result_text = format!(
                     "{}\n{}\nfn {}(x: f32, y: f32, component: u32) -> f32 {{ return {}(x,y,component) + {}(x,y,component); }}",
                     inp_texts[0], inp_texts[1], name, inp_names[0], inp_names[1]
+                );
+
+                Ok(ShaderProgram {
+                    text: result_text,
+                    name,
+                })
+            }
+            ExecutionInformation::Vector3 => {
+                let inps = inps.ok_or(TypeError {
+                    message: "No inputs".to_string(),
+                })??;
+
+                let (inp_texts, inp_names): (Vec<String>, Vec<String>) =
+                    inps.into_iter().map(|a| (a.text, a.name)).collect();
+
+                let name = self.namer.generate_name();
+
+                let result_text = format!(
+                    "{}\n{}\n{}\nfn {}(x: f32, y: f32, component: u32) -> f32 {{ if component == 0 {{ return {}(x,y,component); }} if component == 1 {{ return {}(x,y,component); }} return {}(x,y,component); }}",
+                    inp_texts[0],
+                    inp_texts[1],
+                    inp_texts[2],
+                    name,
+                    inp_names[0],
+                    inp_names[1],
+                    inp_names[2]
                 );
 
                 Ok(ShaderProgram {
