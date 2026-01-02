@@ -1,0 +1,19 @@
+// Fragment shader
+// https://sotrh.github.io/learn-wgpu/beginner/tutorial3-pipeline/#writing-the-shaders
+@group(0) @binding(0) var<uniform> size: vec4<u32>;
+
+{}
+
+fn rename(x: f32, y: f32, component: u32) -> f32 {{
+    return {}(x, y, component);
+}}
+
+fn get_vec(x: f32, y: f32) -> vec4<f32> {{
+    return vec4<f32>(rename(x, y, 0), rename(x, y, 1), rename(x, y, 2), 1.0);
+}}
+
+@fragment
+fn main(@builtin(position) in: vec4<f32>) -> @location(0) vec4<f32> {{
+    let uv = vec2<f32>(in.x / f32(size.x), in.y / f32(size.y));
+    return get_vec(uv.x, uv.y);
+}}

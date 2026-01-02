@@ -1,9 +1,11 @@
 use std::{collections::HashMap, hash::Hash};
 
 use egui::{
-    Pos2, Rect, Sense, Shape, Ui, Vec2, emath::TSTransform, epaint::CircleShape, layers, vec2,
+    Color32, Pos2, Rect, Sense, Shape, Ui, Vec2, emath::TSTransform, epaint::CircleShape, layers,
+    pos2, vec2,
 };
 use shadex_backend::{
+    execution::WGPURunner,
     nodegraph::{NodeGraph, NodeRef},
     typechecking::NodeGraphFormalTypeAnalysis,
 };
@@ -30,6 +32,13 @@ pub struct ViewState {
 pub struct InteractionState {
     pub dragging: DraggingState,
     pub prev_mouse_pos: Pos2,
+}
+
+pub struct TextureViewInfo {
+    pub tex_handle: wgpu::Texture,
+    pub tex_view: wgpu::TextureView,
+    pub size: [u32; 2],
+    pub egui_texture_id: egui::TextureId,
 }
 
 pub enum DraggingState {
@@ -93,11 +102,14 @@ pub fn visual_shadex_test(
     viewstate: &mut ViewState,
     graphstate: &mut NodeGraphState,
     mode: &mut InteractionState,
+    runner: &mut WGPURunner,
+    output_view: &mut TextureViewInfo,
 ) {
     let mut executor = shadex_backend::execution::Executor::default();
     let text = if let Ok(graph) = &graphstate.formal_graph {
         let res = executor.run(&graph.formal_graph, &graph.typecheck);
         if let Ok(prog) = res {
+            runner.run_shader(&prog, &output_view.tex_view);
             prog.text
         } else {
             "No compilation".to_string()
@@ -108,6 +120,15 @@ pub fn visual_shadex_test(
     _ = ui.code(text);
 
     let mut vrect = viewstate.rect;
+
+    ui.painter().image(
+        output_view.egui_texture_id,
+        //Rect::from_min_size(Pos2::ZERO, vec2(128f32, 128f32)),
+        ui.available_rect_before_wrap(),
+        Rect::from_min_max(Pos2::ZERO, pos2(1f32, 1f32)),
+        Color32::WHITE,
+    );
+
     egui::containers::Scene::new()
         .zoom_range(0.0..=5f32)
         .show(ui, &mut vrect, |ui| {

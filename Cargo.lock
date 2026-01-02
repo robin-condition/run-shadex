@@ -3037,6 +3037,7 @@ dependencies = [
 name = "shadex-backend"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "nom",
  "rpds",
  "rspirv",
@@ -3054,6 +3055,7 @@ dependencies = [
  "nom",
  "paste",
  "rpds",
+ "shadex-backend",
  "visual-shadex-lib",
 ]
 
@@ -3529,6 +3531,7 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "shadex-backend",
+ "wgpu",
 ]
 
 [[package]]

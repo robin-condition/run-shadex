@@ -107,7 +107,7 @@ impl Executor {
                 let name = self.namer.generate_name();
                 Ok(ShaderProgram {
                     text: format!(
-                        "fn {}(x: f32, y: f32, component: u32) -> f32 {{ return {}_f32; }}",
+                        "fn {}(x: f32, y: f32, component: u32) -> f32 {{ return {}; }}",
                         name, val
                     ),
                     name,
