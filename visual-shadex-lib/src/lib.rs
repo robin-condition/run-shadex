@@ -109,7 +109,7 @@ pub fn visual_shadex_test(
     let text = if let Ok(graph) = &graphstate.formal_graph {
         let res = executor.run(&graph.formal_graph, &graph.typecheck);
         if let Ok(prog) = res {
-            runner.run_shader(&prog, &output_view.tex_view);
+            //runner.run_shader(&prog, &output_view.tex_view);
             prog.text
         } else {
             "No compilation".to_string()
@@ -133,7 +133,16 @@ pub fn visual_shadex_test(
         .zoom_range(0.0..=5f32)
         .show(ui, &mut vrect, |ui| {
             _ = ui.button("WOOO!");
-            graphstate.show(ui, mode);
+            let change = graphstate.show(ui, mode);
+            if change {
+                let mut executor = shadex_backend::execution::Executor::default();
+                let text = if let Ok(graph) = &graphstate.formal_graph {
+                    let res = executor.run(&graph.formal_graph, &graph.typecheck);
+                    if let Ok(prog) = res {
+                        runner.run_shader(&prog, &output_view.tex_view);
+                    }
+                };
+            }
         });
 
     viewstate.rect = vrect;
