@@ -139,6 +139,7 @@ pub fn visual_shadex_test(
                 let text = if let Ok(graph) = &graphstate.formal_graph {
                     let res = executor.run(&graph.formal_graph, &graph.typecheck);
                     if let Ok(prog) = res {
+                        log::info!("Executing.");
                         runner.run_shader(&prog, &output_view.tex_view);
                     }
                 };

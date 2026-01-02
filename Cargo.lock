@@ -3538,6 +3538,7 @@ name = "visual-shadex-lib"
 version = "0.1.0"
 dependencies = [
  "egui",
+ "log",
  "shadex-backend",
  "wgpu",
 ]
