@@ -21,7 +21,7 @@ thread_local! {
                     },
                 ],
                 outputs: vec![OutputInfo {
-                    name: "value".to_string(),
+                    name: Some("value".to_string()),
                     value_type: Ok(ValueType::primitive(PrimitiveType::F32)),
                 }],
                 annotation: shadex_backend::execution::ExecutionInformation::Add

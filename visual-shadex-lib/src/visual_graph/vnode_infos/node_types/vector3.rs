@@ -25,7 +25,7 @@ thread_local! {
                     }
                 ],
                 outputs: vec![OutputInfo {
-                    name: "value".to_string(),
+                    name: Some("value".to_string()),
                     value_type: Ok(ValueType { inputs: [("component".to_string(), Box::new(ValueType::primitive(PrimitiveType::U32(shadex_backend::typechecking::typetypes::U32Boundedness::Bounded(3)))))].into(), output: PrimitiveType::F32 }),
                 }],
                 annotation: shadex_backend::execution::ExecutionInformation::Vector3

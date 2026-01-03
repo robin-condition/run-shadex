@@ -63,6 +63,7 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        ctx.set_pixels_per_point(1.5f32);
         egui::CentralPanel::default().show(ctx, |ui| {
             visual_shadex_lib::visual_shadex_test(
                 ui,

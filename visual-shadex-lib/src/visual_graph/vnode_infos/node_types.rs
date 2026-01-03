@@ -10,7 +10,7 @@ pub mod out;
 pub mod vector3;
 
 pub const INITIALIZATIONS: [(&str, fn() -> Box<dyn VisualNodeInfo>); 5] = [
-    ("Constant", || Box::new(ConstantInfo::new(2.0f32))),
+    ("Constant", || Box::new(ConstantInfo::new(0.5f32))),
     ("Out", || Box::new(OutInfo::new())),
     ("Attr", || {
         Box::new(AttrInfo::new("x".to_string(), "f32".to_string()))

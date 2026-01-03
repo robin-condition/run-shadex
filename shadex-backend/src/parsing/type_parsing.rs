@@ -123,7 +123,7 @@ fn parse_node_type_declaration<'a>()
     let outputs_parser = separated_list0(
         ws(tag(";")),
         parse_named_value_type().map(|(n, content)| OutputInfo {
-            name: n,
+            name: Some(n),
             value_type: Ok(content),
         }),
     );

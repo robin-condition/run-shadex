@@ -130,9 +130,8 @@ pub fn visual_shadex_test(
     );
 
     egui::containers::Scene::new()
-        .zoom_range(0.0..=5f32)
+        .zoom_range(0.0..=1.0f32)
         .show(ui, &mut vrect, |ui| {
-            _ = ui.button("WOOO!");
             let change = graphstate.show(ui, mode);
             if change {
                 let mut executor = shadex_backend::execution::Executor::default();

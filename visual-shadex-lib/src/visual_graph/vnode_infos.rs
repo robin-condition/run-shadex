@@ -368,7 +368,12 @@ fn draw_output_ports(
                 source: node_ref,
                 output_ind: i,
             };
-            ui.add(Label::new(&p.name).selectable(false));
+            match &p.name {
+                Some(txt) => {
+                    ui.add(Label::new(txt).selectable(false));
+                }
+                None => {}
+            }
 
             let (resp, ptr) = ui.allocate_painter(
                 vec2(PORT_HB_WIDTH, PORT_HB_WIDTH),
@@ -410,13 +415,12 @@ fn draw_output_ports(
 
             ptr.circle_filled(resp.rect.center(), PORT_VIS_RADIUS, color);
             vports[i].pos = resp.rect.center();
+            let strin = match &p.name {
+                Some(txt) => txt,
+                None => &format!("{}", i),
+            };
             resp.on_hover_ui(|ui| {
-                let label = Label::new(richtext_type_desc(
-                    &p.name,
-                    ui,
-                    &p.value_type,
-                    detailed_type,
-                ));
+                let label = Label::new(richtext_type_desc(strin, ui, &p.value_type, detailed_type));
                 ui.add(label);
             });
         });

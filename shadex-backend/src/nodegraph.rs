@@ -40,7 +40,7 @@ pub struct InputInfo<T: PortTypeAnnotation> {
 
 #[derive(Debug)]
 pub struct OutputInfo<T: PortTypeAnnotation> {
-    pub name: String,
+    pub name: Option<String>,
     pub value_type: T,
 }
 

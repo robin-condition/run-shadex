@@ -22,7 +22,7 @@ impl AttrInfo {
                 value_type: typ.clone(),
             }],
             outputs: vec![OutputInfo {
-                name: n.clone(),
+                name: Some(n.clone()),
                 value_type: typ,
             }],
             annotation: shadex_backend::execution::ExecutionInformation::Attr(n.clone()),

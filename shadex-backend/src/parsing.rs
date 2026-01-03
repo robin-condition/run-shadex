@@ -185,7 +185,10 @@ fn process_node_expr(
                 .map(|f| {
                     f.outputs
                         .iter()
-                        .position(|outp| outp.name == output_name)
+                        .position(|outp| match &outp.name {
+                            Some(txt) => *txt == output_name,
+                            _ => false,
+                        })
                         .ok_or_else(|| TypeError {
                             message: "No output of that name found".to_string(),
                         })
