@@ -41,6 +41,8 @@ impl AttrInfo {
 
 impl VisualNodeInfo for AttrInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool {
+        ui.set_max_width(50f32);
+
         let changed = ui.text_edit_singleline(&mut self.name).changed()
             | ui.text_edit_singleline(&mut self.type_str).changed();
         if changed {
