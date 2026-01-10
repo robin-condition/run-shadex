@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use serde::{Deserialize, Serialize};
 use shadex_backend::{
     nodegraph::{FallibleNodeTypeRc, InputInfo, NodeTypeInfo, OutputInfo},
     typechecking::typetypes::{PrimitiveType, ValueType},
@@ -25,13 +26,14 @@ thread_local! {
                     }
                 ],
                 outputs: vec![OutputInfo {
-                    name: Some("value".to_string()),
+                    name: None,
                     value_type: Ok(ValueType { inputs: [("component".to_string(), Box::new(ValueType::primitive(PrimitiveType::U32(shadex_backend::typechecking::typetypes::U32Boundedness::Bounded(3)))))].into(), output: PrimitiveType::F32 }),
                 }],
                 annotation: shadex_backend::execution::ExecutionInformation::Vector3
             }));
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Vector3Info {}
 impl Vector3Info {
     pub fn new() -> Self {
@@ -39,6 +41,7 @@ impl Vector3Info {
     }
 }
 
+#[typetag::serde]
 impl VisualNodeInfo for Vector3Info {
     fn show(&mut self, ui: &mut egui::Ui) -> bool {
         false

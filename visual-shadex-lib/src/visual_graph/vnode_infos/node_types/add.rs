@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use serde::{Deserialize, Serialize};
 use shadex_backend::{
     nodegraph::{FallibleNodeTypeRc, InputInfo, NodeTypeInfo, OutputInfo},
     typechecking::typetypes::{PrimitiveType, ValueType},
@@ -21,13 +22,14 @@ thread_local! {
                     },
                 ],
                 outputs: vec![OutputInfo {
-                    name: Some("value".to_string()),
+                    name: None,
                     value_type: Ok(ValueType::primitive(PrimitiveType::F32)),
                 }],
                 annotation: shadex_backend::execution::ExecutionInformation::Add
             }));
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct AddInfo {}
 impl AddInfo {
     pub fn new() -> Self {
@@ -35,6 +37,7 @@ impl AddInfo {
     }
 }
 
+#[typetag::serde]
 impl VisualNodeInfo for AddInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool {
         false

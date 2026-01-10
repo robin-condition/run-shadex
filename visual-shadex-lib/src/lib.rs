@@ -4,6 +4,7 @@ use egui::{
     Color32, Pos2, Rect, Sense, Shape, Ui, Vec2, emath::TSTransform, epaint::CircleShape, layers,
     pos2, vec2,
 };
+use serde::{Deserialize, Serialize, Serializer};
 use shadex_backend::{
     execution::WGPURunner,
     nodegraph::{NodeGraph, NodeRef},
@@ -25,10 +26,20 @@ mod helpers;
 mod node_templates;
 pub mod visual_graph;
 
+#[derive(Serialize, Deserialize)]
 pub struct ViewState {
     pub rect: Rect,
 }
 
+impl Default for ViewState {
+    fn default() -> Self {
+        ViewState {
+            rect: Rect::from_min_size(Pos2::ZERO, Vec2::splat(300f32)),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Default)]
 pub struct InteractionState {
     pub dragging: DraggingState,
     pub prev_mouse_pos: Pos2,
@@ -41,6 +52,7 @@ pub struct TextureViewInfo {
     pub egui_texture_id: egui::TextureId,
 }
 
+#[derive(Serialize, Deserialize)]
 pub enum DraggingState {
     NotDraggingLine,
     DraggingLineFromInputPort(VNodeInputRef, Option<VNodeOutputRef>),
@@ -68,43 +80,20 @@ impl DraggingState {
     }
 }
 
-pub fn make_constant_node() -> VisualNode {
-    VisualNode {
-        data: Box::new(ConstantInfo::new(2f32)),
-        position: Vec2::ZERO,
-        input_ports: Vec::new(),
-        output_ports: Vec::new(),
-    }
-}
-
-pub fn make_add_node() -> VisualNode {
-    VisualNode {
-        data: Box::new(AddInfo::new()),
-        position: Vec2::ZERO,
-        input_ports: Vec::new(),
-        output_ports: Vec::new(),
-    }
-}
-
-pub fn make_testing_vnode_graph() -> VisualNodeGraph {
-    let graph = VisualNodeGraph::default();
-    //graph.add_node(make_constant_node());
-    //graph.add_node(make_add_node());
-    graph
-}
-
-pub fn make_testing_graph_state() -> NodeGraphState {
-    NodeGraphState::new()
-}
-
 pub fn visual_shadex_test(
     ui: &mut egui::Ui,
-    viewstate: &mut ViewState,
-    graphstate: &mut NodeGraphState,
-    mode: &mut InteractionState,
+    state: &mut GraphUIState,
     runner: &mut WGPURunner,
     output_view: &mut TextureViewInfo,
+    force_render: bool,
 ) {
+    let GraphUIState {
+        view_state: viewstate,
+        graph_state: graphstate,
+        interaction_state: mode,
+    } = state;
+
+    /*
     let mut executor = shadex_backend::execution::Executor::default();
     let text = if let Ok(graph) = &graphstate.formal_graph {
         let res = executor.run(&graph.formal_graph, &graph.typecheck);
@@ -118,6 +107,7 @@ pub fn visual_shadex_test(
         "No compilation".to_string()
     };
     _ = ui.code(text);
+    */
 
     let mut vrect = viewstate.rect;
 
@@ -129,11 +119,13 @@ pub fn visual_shadex_test(
         Color32::WHITE,
     );
 
+    let change = &mut false;
+
     egui::containers::Scene::new()
         .zoom_range(0.0..=1.0f32)
         .show(ui, &mut vrect, |ui| {
-            let change = graphstate.show(ui, mode);
-            if change {
+            *change = graphstate.show(ui, mode);
+            if *change || force_render {
                 let mut executor = shadex_backend::execution::Executor::default();
                 let text = if let Ok(graph) = &graphstate.formal_graph {
                     let res = executor.run(&graph.formal_graph, &graph.typecheck);
@@ -146,4 +138,13 @@ pub fn visual_shadex_test(
         });
 
     viewstate.rect = vrect;
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct GraphUIState {
+    pub view_state: ViewState,
+    pub graph_state: NodeGraphState,
+
+    #[serde(skip)]
+    pub interaction_state: InteractionState,
 }

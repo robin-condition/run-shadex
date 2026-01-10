@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use serde::{Deserialize, Serialize};
 use shadex_backend::{
     nodegraph::{FallibleNodeTypeRc, NodeTypeInfo, OutputInfo},
     typechecking::typetypes::{PrimitiveType, ValueType},
@@ -19,6 +20,7 @@ thread_local! {
 }
 */
 
+#[derive(Serialize, Deserialize)]
 pub struct ConstantInfo {
     pub val: f32,
 }
@@ -28,6 +30,7 @@ impl ConstantInfo {
     }
 }
 
+#[typetag::serde]
 impl VisualNodeInfo for ConstantInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool {
         ui.style_mut().spacing.slider_width = 75f32;

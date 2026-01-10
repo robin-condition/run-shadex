@@ -2,14 +2,14 @@ use eframe::wgpu::{self, Extent3d, TextureDescriptor, wgt::TextureViewDescriptor
 use egui::{Pos2, Rect, Vec2};
 use shadex_backend::execution::WGPURunner;
 use visual_shadex_lib::{
-    InteractionState, TextureViewInfo, ViewState, graph_state::NodeGraphState, make_constant_node,
-    make_testing_graph_state, visual_graph::VisualNodeGraph,
+    GraphUIState, InteractionState, TextureViewInfo, ViewState, graph_state::NodeGraphState,
+    visual_graph::VisualNodeGraph,
 };
 
+use crate::example_programs::EXAMPLE_PROGRAMS;
+
 pub struct App {
-    vs: ViewState,
-    graph: NodeGraphState,
-    mode: InteractionState,
+    graph_ui_state: GraphUIState,
     runner: WGPURunner,
     output_tex: TextureViewInfo,
 }
@@ -39,14 +39,7 @@ impl App {
             wgpu::FilterMode::Linear,
         );
         Self {
-            vs: ViewState {
-                rect: Rect::from_min_size(Pos2::ZERO, Vec2::splat(300f32)),
-            },
-            graph: make_testing_graph_state(),
-            mode: InteractionState {
-                dragging: Default::default(),
-                prev_mouse_pos: Default::default(),
-            },
+            graph_ui_state: Default::default(),
             runner: WGPURunner {
                 dev: rstate.device.clone(),
                 queue: rstate.queue.clone(),
@@ -64,14 +57,27 @@ impl App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         ctx.set_pixels_per_point(1.5f32);
+        let load = &mut false;
+        egui::SidePanel::left("global_left_panel").show(ctx, |ui| {
+            ui.vertical(|ui| {
+                ui.heading("Examples to load");
+                for (name, content) in EXAMPLE_PROGRAMS {
+                    if ui.button(name).clicked() {
+                        self.graph_ui_state = serde_json::from_str(content).unwrap();
+                        *load = true;
+                    }
+                }
+            });
+        });
         egui::CentralPanel::default().show(ctx, |ui| {
+            //let text = serde_json::to_string(&self.graph_ui_state).unwrap_or("None".to_string());
+            //ui.label(text);
             visual_shadex_lib::visual_shadex_test(
                 ui,
-                &mut self.vs,
-                &mut self.graph,
-                &mut self.mode,
+                &mut self.graph_ui_state,
                 &mut self.runner,
                 &mut self.output_tex,
+                *load,
             );
         });
     }

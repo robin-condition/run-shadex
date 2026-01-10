@@ -2,6 +2,7 @@ mod vnode_infos;
 use std::{any, collections::HashMap};
 
 use egui::{Color32, Pos2, Stroke};
+use serde::{Deserialize, Serialize};
 use shadex_backend::{
     nodegraph::{FallibleNodeTypeRc, Node, NodeGraph, ValueRef},
     typechecking::{NodeGraphFormalTypeAnalysis, typetypes::TypeError},
@@ -15,23 +16,25 @@ use crate::{
     visual_graph::vnode_infos::{INITIALIZATIONS, VisualInputPort, VisualOutputPort},
 };
 
-#[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
+#[derive(Hash, PartialEq, Eq, Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct VNodeId(usize);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct VNodeOutputRef {
     pub source: VNodeId,
     pub output_ind: usize,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct VNodeInputRef {
     pub dest: VNodeId,
     pub input_ind: usize,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct VisualNodeGraph {
     nodes: HashMap<VNodeId, VisualNode>,
+    available_ids: Vec<VNodeId>,
     next_id: VNodeId,
 }
 
@@ -39,12 +42,25 @@ impl Default for VisualNodeGraph {
     fn default() -> Self {
         Self {
             nodes: Default::default(),
+            available_ids: Vec::new(),
             next_id: VNodeId(0usize),
         }
     }
 }
 
 impl VisualNodeGraph {
+    fn pop_id(&mut self) -> VNodeId {
+        // Use a freed id
+        if let Some(id) = self.available_ids.pop() {
+            return id;
+        }
+
+        // Use the next never-claimed id
+        let id = self.next_id;
+        self.next_id = VNodeId(self.next_id.0 + 1);
+        id
+    }
+
     pub fn add_node(&mut self, node: VisualNode) -> VNodeId {
         let id = self.next_id;
         self.next_id = VNodeId(self.next_id.0 + 1);
@@ -132,6 +148,9 @@ impl VisualNodeGraph {
 
         // Delete nodes marked for deletion
         if let Some(id) = node_to_del {
+            // Free up the id
+            self.available_ids.push(id);
+
             // Remove the node
             self.nodes.remove(&id);
 

@@ -1,5 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
+use serde::{Deserialize, Serialize};
 use shadex_backend::{
     nodegraph::{FallibleNodeTypeRc, InputInfo, NodeTypeInfo, OutputInfo},
     typechecking::typetypes::{PrimitiveType, U32Boundedness, ValueType},
@@ -42,6 +43,7 @@ thread_local! {
         }));
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct OutInfo {}
 impl OutInfo {
     pub fn new() -> Self {
@@ -49,6 +51,7 @@ impl OutInfo {
     }
 }
 
+#[typetag::serde]
 impl VisualNodeInfo for OutInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool {
         false

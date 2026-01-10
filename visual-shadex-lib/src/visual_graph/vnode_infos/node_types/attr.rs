@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use serde::{Deserialize, Serialize};
 use shadex_backend::{
     nodegraph::{FallibleNodeTypeRc, InputInfo, NodeTypeInfo, OutputInfo},
     typechecking::typetypes::{PrimitiveType, TypeError, ValueType},
@@ -7,10 +8,14 @@ use shadex_backend::{
 
 use crate::visual_graph::VisualNodeInfo;
 
-pub struct AttrInfo {
+#[derive(Serialize, Deserialize)]
+pub struct AttrInfoData {
     pub name: String,
     pub type_str: String,
+}
 
+pub struct AttrInfo {
+    pub data: AttrInfoData,
     prev_valid_type: FallibleNodeTypeRc,
 }
 impl AttrInfo {
@@ -22,7 +27,7 @@ impl AttrInfo {
                 value_type: typ.clone(),
             }],
             outputs: vec![OutputInfo {
-                name: Some(n.clone()),
+                name: None,
                 value_type: typ,
             }],
             annotation: shadex_backend::execution::ExecutionInformation::Attr(n.clone()),
@@ -32,21 +37,45 @@ impl AttrInfo {
     pub fn new(name: String, type_str: String) -> Self {
         let ftype = Self::build_type(&name, &type_str);
         Self {
-            name: name,
-            type_str: type_str,
+            data: AttrInfoData { name, type_str },
             prev_valid_type: ftype,
         }
     }
 }
 
+impl Serialize for AttrInfo {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.data.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for AttrInfo {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        AttrInfoData::deserialize(deserializer).map(AttrInfoData::into)
+    }
+}
+
+impl From<AttrInfoData> for AttrInfo {
+    fn from(value: AttrInfoData) -> Self {
+        Self::new(value.name, value.type_str)
+    }
+}
+
+#[typetag::serde]
 impl VisualNodeInfo for AttrInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool {
         ui.set_max_width(50f32);
 
-        let changed = ui.text_edit_singleline(&mut self.name).changed()
-            | ui.text_edit_singleline(&mut self.type_str).changed();
+        let changed = ui.text_edit_singleline(&mut self.data.name).changed()
+            | ui.text_edit_singleline(&mut self.data.type_str).changed();
         if changed {
-            self.prev_valid_type = Self::build_type(&self.name, &self.type_str);
+            self.prev_valid_type = Self::build_type(&self.data.name, &self.data.type_str);
         }
         changed
     }

@@ -4,6 +4,7 @@ use egui::{
     Color32, FontId, InnerResponse, Label, Pos2, Rect, RichText, Sense, Separator, Shape, Stroke,
     Style, Vec2, epaint::RectShape, layers::PaintList, text::LayoutJob, vec2,
 };
+use serde::{Deserialize, Serialize, de::Visitor, ser::SerializeStruct};
 use shadex_backend::{
     nodegraph::{
         FallibleNodeTypeRc, InputInfo, NodeTypeInfo, NodeTypeRef, OutputInfo, PortTypeAnnotation,
@@ -15,7 +16,7 @@ use shadex_backend::{
     },
 };
 
-pub const UNDERSPECIFIED_COLOR: Color32 = Color32::CYAN;
+pub const UNDERSPECIFIED_COLOR: Color32 = Color32::BLUE;
 pub const ERROR_COLOR: Color32 = Color32::YELLOW;
 pub const HOVER_COLOR: Color32 = Color32::WHITE;
 pub const OVERSPECIFIED_COLOR: Color32 = Color32::ORANGE;
@@ -34,23 +35,26 @@ use crate::{
     visual_graph::{VNodeId, VNodeInputRef, VNodeOutputRef},
 };
 
+#[typetag::serde(tag = "type")]
 pub trait VisualNodeInfo {
     fn show(&mut self, ui: &mut egui::Ui) -> bool;
     fn get_shadex_type(&self) -> FallibleNodeTypeRc;
     fn get_name(&self) -> &str;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct VisualInputPort {
     pub pos: Pos2,
     pub input_source: Option<VNodeOutputRef>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct VisualOutputPort {
     pub pos: Pos2,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub struct VisualNode {
     pub data: Box<dyn VisualNodeInfo>,
     pub position: Vec2,
@@ -58,6 +62,21 @@ pub struct VisualNode {
     pub input_ports: Vec<VisualInputPort>,
     pub output_ports: Vec<VisualOutputPort>,
 }
+
+/*
+impl Serialize for Box<dyn VisualNodeInfo> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut s = serializer.serialize_struct("VNodeInfo", 2)?;
+        s.serialize_field("Name", self.get_name())?;
+        s.serialize_field("Content", &self.to_serialization_data())?;
+
+        s.end()
+    }
+}
+    */
 
 trait ColorfulTypeNotes {
     fn colors(&self) -> (&ValueType, HashMap<String, Color32>);

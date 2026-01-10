@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-egui = "0.33.0"
+egui = "0.33.3"
 log = "0.4.29"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
 shadex-backend = { version = "0.1.0", path = "../shadex-backend" }
+typetag = "0.2.21"
 wgpu = { version = "27.0.1", features = ["webgl"] }

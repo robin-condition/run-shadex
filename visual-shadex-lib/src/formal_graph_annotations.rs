@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
 use shadex_backend::{
     nodegraph::{
         FallibleNodeTypeRc, NodeAnnotation, NodeAnnotationHas, NodeGraph, NodeRef, TypedNodeGraph,

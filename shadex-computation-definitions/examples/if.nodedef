@@ -1,0 +1,36 @@
+fn if_statement(a: InType, b: InType, c: InBool) -> InType {
+    let a_comp;
+    let b_comp;
+    let cond;
+    
+    compile:
+    let c_comp = c.compile();
+    cond = c_comp();
+    if cond {
+        a_comp = a.compile();
+    }
+    else {
+        b_comp = b.compile();
+    }
+
+    run:
+    
+    if cond {
+        return a_comp();
+    }
+    else {
+        return b_comp();
+    }
+}
+
+fn add(a: InType, b: InType) -> InType {
+    let acompd;
+    let bcompd;
+
+    compile:
+    acompd = a.compile();
+    bcompd = b.compile();
+
+    run:
+    return acompd() + bcompd();
+}
