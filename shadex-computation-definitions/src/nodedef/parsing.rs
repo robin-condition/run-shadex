@@ -1,9 +1,9 @@
 use nom::{
     Or, Parser,
     branch::alt,
-    bytes::complete::tag,
+    bytes::complete::{tag, take_until},
     character::{
-        complete::{alpha1, alphanumeric0},
+        complete::{alpha1, alphanumeric0, space0},
         digit1, multispace0,
     },
     combinator::opt,
@@ -18,11 +18,23 @@ use crate::nodedef::ast::{
     full_untyped::{ArgName, ScopedIdentifier, UntypedBody, UntypedExpression, UntypedStatement},
 };
 
+fn space_or_comment<'a, E: ParseError<&'a [u8]>>() -> impl Parser<&'a [u8], Output = (), Error = E>
+{
+    many0(alt((
+        tag(" "),
+        tag("\r"),
+        tag("\n"),
+        tag("\t"),
+        terminated(tag("//"), take_until("\n")),
+    )))
+    .map(|_| ())
+}
+
 // https://github.com/rust-bakery/nom/blob/main/examples/json2.rs
 fn ws<'a, O, E: ParseError<&'a [u8]>, F: Parser<&'a [u8], Output = O, Error = E>>(
     f: F,
 ) -> impl Parser<&'a [u8], Output = O, Error = E> {
-    delimited(multispace0(), f, multispace0())
+    delimited(space_or_comment(), f, space_or_comment())
 }
 
 fn parse_identifier<'a>() -> impl Parser<&'a [u8], Output = String, Error = Error<&'a [u8]>> {
