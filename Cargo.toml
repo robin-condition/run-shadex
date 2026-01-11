@@ -1,4 +1,3 @@
 [workspace]
 resolver = "3"
-members = ["shadex-backend", "shadex-gui", "visual-shadex-lib"]
-# "shadex-computation-definitions",
+members = ["shadex-backend", "shadex-computation-definitions", "shadex-gui", "visual-shadex-lib"]

@@ -14,13 +14,17 @@ fn if_statement(a: InType, b: InType, c: InBool) -> InType {
     }
 
     run:
-    
+
     if cond {
         return a_comp();
     }
     else {
         return b_comp();
     }
+}
+
+fn while_statement(cond: InBool, step: InType,) -> InType {
+
 }
 
 fn add(a: InType, b: InType) -> InType {

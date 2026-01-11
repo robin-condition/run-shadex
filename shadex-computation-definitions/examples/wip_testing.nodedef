@@ -1,0 +1,7 @@
+(a) => {
+    myfn = (x, y) => {
+        out = x + y;
+    };
+blah = core::test(t: myfn);
+    out = myfn(x: 2).val();
+}

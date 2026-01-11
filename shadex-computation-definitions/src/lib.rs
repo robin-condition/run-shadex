@@ -3,6 +3,8 @@ use std::{
     rc::Rc,
 };
 
+pub mod nodedef;
+
 #[derive(Clone)]
 pub struct ConstantProgram<T: Clone + Copy> {
     pub val: T,
@@ -12,6 +14,8 @@ pub trait Computation {
     fn my_type(&self) -> impl SuperDetailedType;
     fn get_function_ref(&self) -> ();
 }
+
+pub trait Struct {}
 
 pub trait Value {}
 
@@ -52,6 +56,7 @@ impl SuperDetailedComputationType {
     ) -> SuperDetailedComputationType {
         // Don't do any smartness with using the same fields for the first round.
         // Just build a struct where only one field (plus the tag) is populated.
+        todo!()
     }
 }
 
@@ -64,11 +69,8 @@ pub trait SuperDetailedType: PartialEq + Eq {
 
     //fn get_complete_computation(&self) -> impl Computation;
 
-    fn get_computation_for_applying_arg(
-        &self,
-        arg_name: &String,
-        arg_val_handle: impl Value,
-    ) -> impl Computation;
+    fn get_computation_for_applying_arg(&self, arg_name: &String, arg_val_handle: impl Value)
+    -> (); //impl Computation;
 }
 
 pub struct ConstantFloatCompType {
@@ -100,7 +102,7 @@ impl SuperDetailedType for ConstantFloatCompType {
         &self,
         arg_name: &String,
         arg_val_handle: impl Value,
-    ) -> impl Computation {
+    ) -> () {
         todo!()
     }
 }

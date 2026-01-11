@@ -3121,6 +3121,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "shadex-computation-definitions"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "nom",
+ "wgsl-parse",
+]
+
+[[package]]
 name = "shadex-gui"
 version = "0.1.0"
 dependencies = [
