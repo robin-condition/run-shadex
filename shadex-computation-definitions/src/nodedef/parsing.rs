@@ -75,8 +75,23 @@ fn parse_assignment<'a>()
     })
 }
 
+fn parse_decl_assign<'a>()
+-> impl Parser<&'a [u8], Output = UntypedStatement, Error = Error<&'a [u8]>> {
+    delimited(
+        ws(tag("let")),
+        separated_pair(ws(parse_identifier()), ws(tag("=")), parse_expr()),
+        ws(tag(";")),
+    )
+    .map(|(name, expr)| {
+        UntypedStatement::DeclAssignment(AssignmentStatement {
+            id: name,
+            rhs: expr,
+        })
+    })
+}
+
 fn parse_stmt<'a>() -> impl Parser<&'a [u8], Output = UntypedStatement, Error = Error<&'a [u8]>> {
-    parse_assignment()
+    alt((parse_assignment(), parse_decl_assign()))
 }
 
 fn parse_body<'a>() -> impl Parser<&'a [u8], Output = UntypedBody, Error = Error<&'a [u8]>> {

@@ -34,6 +34,7 @@ impl ExpressionType for Box<UntypedExpression> {}
 #[derive(Debug)]
 pub enum UntypedStatement {
     Assignment(AssignmentStatement<String, UntypedExpression>),
+    DeclAssignment(AssignmentStatement<String, UntypedExpression>),
 }
 
 impl Identifier for String {}

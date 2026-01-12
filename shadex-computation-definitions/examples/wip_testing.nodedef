@@ -1,7 +1,7 @@
 // Lambdas are declared like this.
 (a, b) => {
     // The only statements are assignments.
-    myfn = (x, y) => {
+    let myfn = (x, y) => {
         out = x + y;
     };
     // Identifiers can be scoped.

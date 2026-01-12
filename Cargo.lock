@@ -3126,6 +3126,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "nom",
+ "rpds",
  "wgsl-parse",
 ]
 

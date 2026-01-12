@@ -62,3 +62,9 @@ pub struct AssignmentStatement<Id: Identifier, Expr: ExpressionType> {
     pub id: Id,
     pub rhs: Expr,
 }
+
+#[derive(Debug)]
+pub struct DeclAssignmentStatement<Id: Identifier, Expr: ExpressionType> {
+    pub id: Id,
+    pub rhs: Expr,
+}
