@@ -50,6 +50,7 @@ pub enum ScopedIdentifier {
 #[derive(Debug)]
 pub struct UntypedBody {
     pub stmts: Vec<UntypedStatement>,
+    pub end_expr: Option<Box<UntypedExpression>>,
 }
 
 impl BodyType for UntypedBody {}

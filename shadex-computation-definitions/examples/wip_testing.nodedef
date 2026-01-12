@@ -10,4 +10,5 @@
     blah = core::test(t: myfn);
     // Values can have function members
     out = myfn(x: 2).val();
+    a
 }

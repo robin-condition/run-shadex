@@ -95,7 +95,7 @@ fn parse_stmt<'a>() -> impl Parser<&'a [u8], Output = UntypedStatement, Error = 
 }
 
 fn parse_body<'a>() -> impl Parser<&'a [u8], Output = UntypedBody, Error = Error<&'a [u8]>> {
-    delimited(ws(tag("{")), many0(parse_stmt()), ws(tag("}"))).map(|g| UntypedBody { stmts: g })
+    delimited(ws(tag("{")), (many0(parse_stmt()), ws(opt(parse_expr()))), ws(tag("}"))).map(|g| UntypedBody { stmts: g.0, end_expr: g.1.map(Box::new) })
 }
 
 fn parse_lambda_decl<'a>()
