@@ -1,6 +1,7 @@
 use crate::nodedef::ast::{
     ArgDefType, AssignmentStatement, BodyType, CallExpression, CapturesInfoType, ExpressionType,
     FourArithmeticExpression, Identifier, LambdaExpression, LiteralExpression, MemberExpression,
+    StructExpression,
 };
 
 #[derive(Debug)]
@@ -27,6 +28,7 @@ pub enum UntypedExpression {
     LiteralF32(LiteralExpression<f32>),
     MemberAccess(MemberExpression<Box<UntypedExpression>>),
     ScopedIdentifier(ScopedIdentifier),
+    StructConstructor(StructExpression<UntypedExpression>),
 }
 impl ExpressionType for UntypedExpression {}
 impl ExpressionType for Box<UntypedExpression> {}

@@ -4,6 +4,7 @@
     let myfn = (x, y) => {
         out = x + y;
     };
+    let dat = (a: a, b: b);
     // Identifiers can be scoped.
     // Functions MUST be called with named arguments. No alternative.
     blah = core::test(t: myfn);

@@ -86,5 +86,12 @@ pub fn free_variables(expr: &UntypedExpression) -> HashTrieSet<String> {
                 HashTrieSet::new().insert(name.clone())
             }
         },
+        UntypedExpression::StructConstructor(e) => {
+            let mut res = HashTrieSet::new();
+            for fld in &e.fields {
+                res = set_union(res, free_variables(&fld.1));
+            }
+            res
+        }
     }
 }

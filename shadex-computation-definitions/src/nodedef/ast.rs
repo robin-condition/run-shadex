@@ -45,6 +45,11 @@ pub struct LambdaExpression<ArgDef: ArgDefType, Body: BodyType, Captures: Captur
     pub caps: Captures,
 }
 
+#[derive(Debug)]
+pub struct StructExpression<FieldExpr: ExpressionType> {
+    pub fields: Vec<(String, FieldExpr)>,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct LiteralExpression<Val: Clone + Copy> {
     pub v: Val,

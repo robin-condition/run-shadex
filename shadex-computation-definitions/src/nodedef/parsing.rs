@@ -14,7 +14,7 @@ use nom::{
 
 use crate::nodedef::ast::{
     ArithmeticOp, AssignmentStatement, CallExpression, FourArithmeticExpression, LambdaExpression,
-    LiteralExpression, MemberExpression,
+    LiteralExpression, MemberExpression, StructExpression,
     full_untyped::{ArgName, ScopedIdentifier, UntypedBody, UntypedExpression, UntypedStatement},
 };
 
@@ -115,6 +115,19 @@ fn parse_lambda_decl<'a>()
     })
 }
 
+fn parse_struct_ctor<'a>()
+-> impl Parser<&'a [u8], Output = UntypedExpression, Error = Error<&'a [u8]>> {
+    delimited(
+        ws(tag("(")),
+        separated_list1(
+            ws(tag(",")),
+            separated_pair(parse_identifier(), ws(tag(":")), parse_expr()),
+        ),
+        ws(tag(")")),
+    )
+    .map(|flds| UntypedExpression::StructConstructor(StructExpression { fields: flds }))
+}
+
 pub fn parse_expr() -> ExprParser {
     ExprParser {}
 }
@@ -140,6 +153,7 @@ fn parse_atom<'a>() -> impl Parser<&'a [u8], Output = UntypedExpression, Error =
         parse_scoped_ident().map(UntypedExpression::ScopedIdentifier),
         parse_lambda_decl(),
         delimited(ws(tag("(")), parse_expr(), ws(tag(")"))),
+        parse_struct_ctor(),
     ))
 }
 
