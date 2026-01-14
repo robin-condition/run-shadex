@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use nom::{
     Or, Parser,
     branch::alt,
@@ -6,7 +8,7 @@ use nom::{
         complete::{alpha1, alphanumeric0, space0},
         digit1, multispace0,
     },
-    combinator::opt,
+    combinator::{all_consuming, opt},
     error::{Error, ParseError},
     multi::{many0, many1, separated_list0, separated_list1},
     sequence::{delimited, preceded, separated_pair, terminated},
@@ -293,6 +295,32 @@ pub fn parse_sum<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression,
         })
 }
 
+pub fn parse_comparator_level<'a>()
+-> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
+    (
+        parse_sum(),
+        many0((
+            alt((
+                ws(tag("==")).map(|_| ArithmeticOp::Eq),
+                ws(tag(">=")).map(|_| ArithmeticOp::Geq),
+                ws(tag("<=")).map(|_| ArithmeticOp::Leq),
+            )),
+            parse_sum(),
+        )),
+    )
+        .map(|(strt, ops)| {
+            let mut res = strt;
+            for op in ops {
+                res = UntypedExpression::Arithmetic(FourArithmeticExpression {
+                    op: op.0,
+                    left: Box::new(res),
+                    right: Box::new(op.1),
+                });
+            }
+            res
+        })
+}
+
 pub struct ExprParser;
 
 impl<'a> Parser<InputSpan<'a>> for ExprParser {
@@ -304,6 +332,25 @@ impl<'a> Parser<InputSpan<'a>> for ExprParser {
         &mut self,
         input: InputSpan<'a>,
     ) -> nom::PResult<OM, InputSpan<'a>, Self::Output, Self::Error> {
-        parse_sum().process::<OM>(input)
+        parse_comparator_level().process::<OM>(input)
     }
+}
+
+fn parse_global_def<'a>()
+-> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = (String, UntypedExpression)> {
+    preceded(
+        ws(tag("DEF")),
+        separated_pair(parse_identifier(), ws(tag(":")), parse_expr()),
+    )
+}
+
+fn parse_global_def_file<'a>()
+-> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = HashMap<String, UntypedExpression>> {
+    all_consuming(many0(parse_global_def()).map(|v| v.into_iter().collect()))
+}
+
+pub fn parse_global_def_file_specific<'a>(
+    inp: InputSpan<'a>,
+) -> Result<HashMap<String, UntypedExpression>, nom::Err<MyError<'a>>> {
+    parse_global_def_file().parse_complete(inp).map(|f| f.1)
 }

@@ -19,6 +19,9 @@ pub enum ArithmeticOp {
     Sub,
     Mult,
     Div,
+    Eq,
+    Leq,
+    Geq,
 }
 
 #[derive(Debug)]

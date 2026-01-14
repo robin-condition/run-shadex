@@ -1,5 +1,5 @@
 // Lambdas are declared like this.
-(a, b) => {
+DEF test: (a, b) => {
     // The only statements are assignments.
     let myfn = (x, y) => {
         out = x + y;
@@ -11,4 +11,19 @@
     // Values can have function members
     out = myfn(x: 2).val<a,b>();
     a
+}
+
+DEF add: (a, b) => {
+    a.val() + b.val()
+}
+
+DEF sum: (f) => {
+    let j = f.val<x>();
+    j(x: 2).val() + j(x: 3).val()
+}
+
+DEF vector: (x, y, z) => {
+    (comp) => {
+        core::or(cond: () => {comp.val() == 0}, a: x, b: core::or(cond: () => {comp.val() == 1}, a: y, b: z))
+    }
 }
