@@ -12,6 +12,9 @@ use nom::{
     sequence::{delimited, preceded, separated_pair, terminated},
 };
 
+type InputSpan<'a> = &'a str;
+type MyError<'a> = Error<InputSpan<'a>>;
+
 use crate::nodedef::ast::{
     AnnotatedExpression, ArithmeticOp, AssignmentStatement, CallExpression,
     FourArithmeticExpression, LambdaExpression, LiteralExpression, MemberExpression,
@@ -19,8 +22,8 @@ use crate::nodedef::ast::{
     full_untyped::{ArgName, ScopedIdentifier, UntypedBody, UntypedExpression, UntypedStatement},
 };
 
-fn space_or_comment<'a, E: ParseError<&'a [u8]>>() -> impl Parser<&'a [u8], Output = (), Error = E>
-{
+fn space_or_comment<'a, E: ParseError<InputSpan<'a>>>()
+-> impl Parser<InputSpan<'a>, Output = (), Error = E> {
     many0(alt((
         tag(" "),
         tag("\r"),
@@ -32,38 +35,39 @@ fn space_or_comment<'a, E: ParseError<&'a [u8]>>() -> impl Parser<&'a [u8], Outp
 }
 
 // https://github.com/rust-bakery/nom/blob/main/examples/json2.rs
-fn ws<'a, O, E: ParseError<&'a [u8]>, F: Parser<&'a [u8], Output = O, Error = E>>(
+fn ws<'a, O, E: ParseError<InputSpan<'a>>, F: Parser<InputSpan<'a>, Output = O, Error = E>>(
     f: F,
-) -> impl Parser<&'a [u8], Output = O, Error = E> {
+) -> impl Parser<InputSpan<'a>, Output = O, Error = E> {
     delimited(space_or_comment(), f, space_or_comment())
 }
 
-fn parse_identifier<'a>() -> impl Parser<&'a [u8], Output = String, Error = Error<&'a [u8]>> {
+fn parse_identifier<'a>() -> impl Parser<InputSpan<'a>, Output = String, Error = MyError<'a>> {
     ws((alpha1, alphanumeric0)
-        .map(|b| String::from_utf8_lossy(b.0).to_string() + String::from_utf8_lossy(b.1).as_ref()))
+        // .map(|b| String::from_utf8_lossy(b.0).to_string() + String::from_utf8_lossy(b.1).as_ref()))
+        .map(|b: (&str, &str)| b.0.to_string() + b.1))
 }
 
-fn parse_u32<'a>() -> impl Parser<&'a [u8], Output = u32, Error = Error<&'a [u8]>> {
+fn parse_u32<'a>() -> impl Parser<InputSpan<'a>, Output = u32, Error = MyError<'a>> {
     ws(nom::character::complete::u32)
 }
 
-fn parse_opt_sign<'a>() -> impl Parser<&'a [u8], Output = i32, Error = Error<&'a [u8]>> {
+fn parse_opt_sign<'a>() -> impl Parser<InputSpan<'a>, Output = i32, Error = MyError<'a>> {
     opt(ws(alt((tag("-").map(|_| -1), tag("+").map(|_| 1))))).map(|a| match a {
         Some(s) => s,
         None => 1,
     })
 }
 
-fn parse_i32<'a>() -> impl Parser<&'a [u8], Output = i32, Error = Error<&'a [u8]>> {
+fn parse_i32<'a>() -> impl Parser<InputSpan<'a>, Output = i32, Error = MyError<'a>> {
     (parse_opt_sign(), parse_u32()).map(|(a, b)| a * b as i32)
 }
 
-fn parse_f32<'a>() -> impl Parser<&'a [u8], Output = f32, Error = Error<&'a [u8]>> {
+fn parse_f32<'a>() -> impl Parser<InputSpan<'a>, Output = f32, Error = MyError<'a>> {
     ws(nom::number::float())
 }
 
 fn parse_assignment<'a>()
--> impl Parser<&'a [u8], Output = UntypedStatement, Error = Error<&'a [u8]>> {
+-> impl Parser<InputSpan<'a>, Output = UntypedStatement, Error = MyError<'a>> {
     terminated(
         separated_pair(ws(parse_identifier()), ws(tag("=")), parse_expr()),
         ws(tag(";")),
@@ -77,7 +81,7 @@ fn parse_assignment<'a>()
 }
 
 fn parse_decl_assign<'a>()
--> impl Parser<&'a [u8], Output = UntypedStatement, Error = Error<&'a [u8]>> {
+-> impl Parser<InputSpan<'a>, Output = UntypedStatement, Error = MyError<'a>> {
     delimited(
         ws(tag("let")),
         separated_pair(ws(parse_identifier()), ws(tag("=")), parse_expr()),
@@ -91,11 +95,11 @@ fn parse_decl_assign<'a>()
     })
 }
 
-fn parse_stmt<'a>() -> impl Parser<&'a [u8], Output = UntypedStatement, Error = Error<&'a [u8]>> {
+fn parse_stmt<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedStatement, Error = MyError<'a>> {
     alt((parse_assignment(), parse_decl_assign()))
 }
 
-fn parse_body<'a>() -> impl Parser<&'a [u8], Output = UntypedBody, Error = Error<&'a [u8]>> {
+fn parse_body<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedBody, Error = MyError<'a>> {
     delimited(
         ws(tag("{")),
         (many0(parse_stmt()), ws(opt(parse_expr()))),
@@ -108,7 +112,7 @@ fn parse_body<'a>() -> impl Parser<&'a [u8], Output = UntypedBody, Error = Error
 }
 
 fn parse_lambda_decl<'a>()
--> impl Parser<&'a [u8], Output = UntypedExpression, Error = Error<&'a [u8]>> {
+-> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
     let parse_arg = parse_identifier().map(|name| ArgName { name });
     let parse_args = delimited(
         ws(tag("(")),
@@ -125,7 +129,7 @@ fn parse_lambda_decl<'a>()
 }
 
 fn parse_struct_ctor<'a>()
--> impl Parser<&'a [u8], Output = UntypedExpression, Error = Error<&'a [u8]>> {
+-> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
     delimited(
         ws(tag("(")),
         separated_list1(
@@ -142,7 +146,7 @@ pub fn parse_expr() -> ExprParser {
 }
 
 fn parse_scoped_ident<'a>()
--> impl Parser<&'a [u8], Output = ScopedIdentifier, Error = Error<&'a [u8]>> {
+-> impl Parser<InputSpan<'a>, Output = ScopedIdentifier, Error = MyError<'a>> {
     separated_list1(ws(tag("::")), parse_identifier()).map(|idents| {
         let mut res = ScopedIdentifier::Scopeless(idents[0].clone());
         for i in idents.into_iter().skip(1) {
@@ -152,7 +156,7 @@ fn parse_scoped_ident<'a>()
     })
 }
 
-fn parse_atom<'a>() -> impl Parser<&'a [u8], Output = UntypedExpression, Error = Error<&'a [u8]>> {
+fn parse_atom<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
     alt((
         terminated(parse_f32(), tag("f32"))
             .map(|f| UntypedExpression::LiteralF32(LiteralExpression { v: f })),
@@ -173,12 +177,12 @@ enum FactorSuffix {
 }
 
 fn parse_member_access_suffix<'a>()
--> impl Parser<&'a [u8], Output = String, Error = Error<&'a [u8]>> {
+-> impl Parser<InputSpan<'a>, Output = String, Error = MyError<'a>> {
     preceded(ws(tag(".")), parse_identifier())
 }
 
 fn parse_annotation_suffix<'a>()
--> impl Parser<&'a [u8], Output = Vec<String>, Error = Error<&'a [u8]>> {
+-> impl Parser<InputSpan<'a>, Output = Vec<String>, Error = MyError<'a>> {
     delimited(
         ws(tag("<")),
         separated_list0(ws(tag(",")), parse_identifier()),
@@ -187,7 +191,7 @@ fn parse_annotation_suffix<'a>()
 }
 
 fn parse_fn_call_suffix<'a>()
--> impl Parser<&'a [u8], Output = Vec<(String, UntypedExpression)>, Error = Error<&'a [u8]>> {
+-> impl Parser<InputSpan<'a>, Output = Vec<(String, UntypedExpression)>, Error = MyError<'a>> {
     delimited(
         ws(tag("(")),
         separated_list0(
@@ -199,7 +203,7 @@ fn parse_fn_call_suffix<'a>()
 }
 
 fn parse_atom_with_suffices<'a>()
--> impl Parser<&'a [u8], Output = UntypedExpression, Error = Error<&'a [u8]>> {
+-> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
     (
         parse_atom(),
         many0(alt((
@@ -234,13 +238,13 @@ fn parse_atom_with_suffices<'a>()
         })
 }
 
-fn parse_factor<'a>() -> impl Parser<&'a [u8], Output = UntypedExpression, Error = Error<&'a [u8]>>
+fn parse_factor<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>>
 {
     parse_atom_with_suffices()
 }
 
-pub fn parse_term<'a>() -> impl Parser<&'a [u8], Output = UntypedExpression, Error = Error<&'a [u8]>>
-{
+pub fn parse_term<'a>()
+-> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
     (
         parse_factor(),
         many0((
@@ -264,7 +268,7 @@ pub fn parse_term<'a>() -> impl Parser<&'a [u8], Output = UntypedExpression, Err
         })
 }
 
-pub fn parse_sum<'a>() -> impl Parser<&'a [u8], Output = UntypedExpression, Error = Error<&'a [u8]>>
+pub fn parse_sum<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>>
 {
     (
         parse_term(),
@@ -291,15 +295,15 @@ pub fn parse_sum<'a>() -> impl Parser<&'a [u8], Output = UntypedExpression, Erro
 
 pub struct ExprParser;
 
-impl<'a> Parser<&'a [u8]> for ExprParser {
+impl<'a> Parser<InputSpan<'a>> for ExprParser {
     type Output = UntypedExpression;
 
-    type Error = Error<&'a [u8]>;
+    type Error = MyError<'a>;
 
     fn process<OM: nom::OutputMode>(
         &mut self,
-        input: &'a [u8],
-    ) -> nom::PResult<OM, &'a [u8], Self::Output, Self::Error> {
+        input: InputSpan<'a>,
+    ) -> nom::PResult<OM, InputSpan<'a>, Self::Output, Self::Error> {
         parse_sum().process::<OM>(input)
     }
 }

@@ -5,8 +5,10 @@ use shadex_computation_definitions::nodedef::{
 };
 
 fn main() {
-    let unit = parse_expr()
-        .parse_complete(include_str!("../examples/wip_testing.nodedef").as_bytes())
+    let unit = nom::combinator::all_consuming(parse_expr())
+        .parse_complete(
+            include_str!("../examples/wip_testing.nodedef"), //    .as_bytes()
+        )
         .unwrap()
         .1;
     let fvs = free_variables(&unit);
