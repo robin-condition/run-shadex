@@ -1,7 +1,7 @@
 use crate::nodedef::ast::{
-    ArgDefType, AssignmentStatement, BodyType, CallExpression, CapturesInfoType, ExpressionType,
-    FourArithmeticExpression, Identifier, LambdaExpression, LiteralExpression, MemberExpression,
-    StructExpression,
+    AnnotatedExpression, AnnotationType, ArgDefType, AssignmentStatement, BodyType, CallExpression,
+    CapturesInfoType, ExpressionType, FourArithmeticExpression, Identifier, LambdaExpression,
+    LiteralExpression, MemberExpression, StructExpression,
 };
 
 #[derive(Debug)]
@@ -29,6 +29,7 @@ pub enum UntypedExpression {
     MemberAccess(MemberExpression<Box<UntypedExpression>>),
     ScopedIdentifier(ScopedIdentifier),
     StructConstructor(StructExpression<UntypedExpression>),
+    AnnotatedExpression(AnnotatedExpression<Box<UntypedExpression>, String>),
 }
 impl ExpressionType for UntypedExpression {}
 impl ExpressionType for Box<UntypedExpression> {}
@@ -40,6 +41,7 @@ pub enum UntypedStatement {
 }
 
 impl Identifier for String {}
+impl AnnotationType for String {}
 
 #[derive(Debug)]
 pub enum ScopedIdentifier {

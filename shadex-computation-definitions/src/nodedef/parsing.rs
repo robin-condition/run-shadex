@@ -13,8 +13,9 @@ use nom::{
 };
 
 use crate::nodedef::ast::{
-    ArithmeticOp, AssignmentStatement, CallExpression, FourArithmeticExpression, LambdaExpression,
-    LiteralExpression, MemberExpression, StructExpression,
+    AnnotatedExpression, ArithmeticOp, AssignmentStatement, CallExpression,
+    FourArithmeticExpression, LambdaExpression, LiteralExpression, MemberExpression,
+    StructExpression,
     full_untyped::{ArgName, ScopedIdentifier, UntypedBody, UntypedExpression, UntypedStatement},
 };
 
@@ -95,7 +96,15 @@ fn parse_stmt<'a>() -> impl Parser<&'a [u8], Output = UntypedStatement, Error = 
 }
 
 fn parse_body<'a>() -> impl Parser<&'a [u8], Output = UntypedBody, Error = Error<&'a [u8]>> {
-    delimited(ws(tag("{")), (many0(parse_stmt()), ws(opt(parse_expr()))), ws(tag("}"))).map(|g| UntypedBody { stmts: g.0, end_expr: g.1.map(Box::new) })
+    delimited(
+        ws(tag("{")),
+        (many0(parse_stmt()), ws(opt(parse_expr()))),
+        ws(tag("}")),
+    )
+    .map(|g| UntypedBody {
+        stmts: g.0,
+        end_expr: g.1.map(Box::new),
+    })
 }
 
 fn parse_lambda_decl<'a>()
@@ -160,11 +169,21 @@ fn parse_atom<'a>() -> impl Parser<&'a [u8], Output = UntypedExpression, Error =
 enum FactorSuffix {
     MemberAccess(String),
     FnCall(Vec<(String, UntypedExpression)>),
+    Annotation(Vec<String>),
 }
 
 fn parse_member_access_suffix<'a>()
 -> impl Parser<&'a [u8], Output = String, Error = Error<&'a [u8]>> {
     preceded(ws(tag(".")), parse_identifier())
+}
+
+fn parse_annotation_suffix<'a>()
+-> impl Parser<&'a [u8], Output = Vec<String>, Error = Error<&'a [u8]>> {
+    delimited(
+        ws(tag("<")),
+        separated_list0(ws(tag(",")), parse_identifier()),
+        ws(tag(">")),
+    )
 }
 
 fn parse_fn_call_suffix<'a>()
@@ -186,6 +205,7 @@ fn parse_atom_with_suffices<'a>()
         many0(alt((
             parse_member_access_suffix().map(FactorSuffix::MemberAccess),
             parse_fn_call_suffix().map(FactorSuffix::FnCall),
+            parse_annotation_suffix().map(FactorSuffix::Annotation),
         ))),
     )
         .map(|(a, sfx)| {
@@ -202,6 +222,12 @@ fn parse_atom_with_suffices<'a>()
                         fn_expr: Box::new(res),
                         args: items,
                     }),
+                    FactorSuffix::Annotation(annotations) => {
+                        UntypedExpression::AnnotatedExpression(AnnotatedExpression {
+                            src: Box::new(res),
+                            annotations,
+                        })
+                    }
                 };
             }
             res

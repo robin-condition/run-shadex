@@ -11,6 +11,8 @@ pub trait BodyType: Debug {}
 
 pub trait CapturesInfoType: Debug {}
 
+pub trait AnnotationType: Debug {}
+
 #[derive(Debug)]
 pub enum ArithmeticOp {
     Add,
@@ -43,6 +45,12 @@ pub struct LambdaExpression<ArgDef: ArgDefType, Body: BodyType, Captures: Captur
     pub args: Vec<ArgDef>,
     pub body: Body,
     pub caps: Captures,
+}
+
+#[derive(Debug)]
+pub struct AnnotatedExpression<SourceType: ExpressionType, Annotation: AnnotationType> {
+    pub src: SourceType,
+    pub annotations: Vec<Annotation>,
 }
 
 #[derive(Debug)]

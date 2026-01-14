@@ -93,5 +93,6 @@ pub fn free_variables(expr: &UntypedExpression) -> HashTrieSet<String> {
             }
             res
         }
+        UntypedExpression::AnnotatedExpression(e) => free_variables(&e.src),
     }
 }

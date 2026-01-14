@@ -9,6 +9,6 @@
     // Functions MUST be called with named arguments. No alternative.
     blah = core::test(t: myfn);
     // Values can have function members
-    out = myfn(x: 2).val();
+    out = myfn(x: 2).val<a,b>();
     a
 }
