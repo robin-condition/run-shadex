@@ -299,7 +299,7 @@ pub fn parse_comparator_level<'a>()
 -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
     (
         parse_sum(),
-        many0((
+        opt((
             alt((
                 ws(tag("==")).map(|_| ArithmeticOp::Eq),
                 ws(tag(">=")).map(|_| ArithmeticOp::Geq),
@@ -310,7 +310,7 @@ pub fn parse_comparator_level<'a>()
     )
         .map(|(strt, ops)| {
             let mut res = strt;
-            for op in ops {
+            if let Some(op) = ops {
                 res = UntypedExpression::Arithmetic(FourArithmeticExpression {
                     op: op.0,
                     left: Box::new(res),
