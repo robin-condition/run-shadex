@@ -21,7 +21,9 @@ use crate::nodedef::ast::{
     AnnotatedExpression, ArithmeticOp, AssignmentStatement, CallExpression,
     FourArithmeticExpression, LambdaExpression, LiteralExpression, MemberExpression,
     StructExpression,
-    full_untyped::{ArgName, ScopedIdentifier, UntypedBody, UntypedExpression, UntypedStatement},
+    full_untyped::{
+        GlobalUntypedExprDefs, ScopedIdentifier, UntypedBody, UntypedExpression, UntypedStatement,
+    },
 };
 
 fn space_or_comment<'a, E: ParseError<InputSpan<'a>>>()
@@ -68,7 +70,7 @@ fn parse_f32<'a>() -> impl Parser<InputSpan<'a>, Output = f32, Error = MyError<'
     ws(nom::number::float())
 }
 
-fn parse_assignment<'a>()
+/*fn parse_assignment<'a>()
 -> impl Parser<InputSpan<'a>, Output = UntypedStatement, Error = MyError<'a>> {
     terminated(
         separated_pair(ws(parse_identifier()), ws(tag("=")), parse_expr()),
@@ -80,7 +82,7 @@ fn parse_assignment<'a>()
             rhs: expr,
         })
     })
-}
+}*/
 
 fn parse_decl_assign<'a>()
 -> impl Parser<InputSpan<'a>, Output = UntypedStatement, Error = MyError<'a>> {
@@ -98,7 +100,8 @@ fn parse_decl_assign<'a>()
 }
 
 fn parse_stmt<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedStatement, Error = MyError<'a>> {
-    alt((parse_assignment(), parse_decl_assign()))
+    //alt((parse_assignment(), parse_decl_assign()))
+    parse_decl_assign()
 }
 
 fn parse_body<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedBody, Error = MyError<'a>> {
@@ -115,7 +118,7 @@ fn parse_body<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedBody, Error = 
 
 fn parse_lambda_decl<'a>()
 -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
-    let parse_arg = parse_identifier().map(|name| ArgName { name });
+    let parse_arg = parse_identifier();
     let parse_args = delimited(
         ws(tag("(")),
         separated_list0(ws(tag(",")), parse_arg),
@@ -345,12 +348,18 @@ fn parse_global_def<'a>()
 }
 
 fn parse_global_def_file<'a>()
--> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = HashMap<String, UntypedExpression>> {
-    all_consuming(many0(parse_global_def()).map(|v| v.into_iter().collect()))
+-> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = GlobalUntypedExprDefs> {
+    all_consuming(many0(parse_global_def()).map(|v| {
+        let name_vec = v.iter().map(|a| a.0.clone()).collect();
+        GlobalUntypedExprDefs {
+            map: v.into_iter().collect(),
+            names: name_vec,
+        }
+    }))
 }
 
 pub fn parse_global_def_file_specific<'a>(
     inp: InputSpan<'a>,
-) -> Result<HashMap<String, UntypedExpression>, nom::Err<MyError<'a>>> {
+) -> Result<GlobalUntypedExprDefs, nom::Err<MyError<'a>>> {
     parse_global_def_file().parse_complete(inp).map(|f| f.1)
 }

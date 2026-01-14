@@ -1,3 +1,4 @@
 {
-    "rust-analyzer.cargo.noDeps": false
+    "rust-analyzer.cargo.noDeps": false,
+    "editor.formatOnSave": true
 }

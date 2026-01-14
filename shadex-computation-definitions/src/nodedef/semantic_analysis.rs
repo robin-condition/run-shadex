@@ -1,4 +1,6 @@
-use rpds::HashTrieSet;
+use std::collections::HashMap;
+
+use rpds::{HashTrieMap, HashTrieSet};
 
 use crate::nodedef::ast::full_untyped::{UntypedBody, UntypedExpression, UntypedStatement};
 
@@ -11,7 +13,6 @@ pub enum PrimitiveType {
 
 #[derive(Debug)]
 pub enum TypeInfo {
-    Vector(usize, PrimitiveType),
     Primitive(PrimitiveType),
     Complex(Box<ClosureContextType>),
 }
@@ -45,10 +46,12 @@ pub fn body_fvs(body: &UntypedBody) -> HashTrieSet<String> {
 
 pub fn statement_fvs(stmt: &UntypedStatement, belows: HashTrieSet<String>) -> HashTrieSet<String> {
     match stmt {
+        /*
         UntypedStatement::Assignment(s) => {
             println!("{}", s.id);
             set_union(belows, free_variables(&s.rhs).insert(s.id.clone()))
         }
+        */
         UntypedStatement::DeclAssignment(s) => {
             set_union(belows.remove(&s.id), free_variables(&s.rhs))
         }
@@ -63,7 +66,7 @@ pub fn free_variables(expr: &UntypedExpression) -> HashTrieSet<String> {
         UntypedExpression::Lambda(e) => {
             let mut fvs = body_fvs(&e.body);
             for a in &e.args {
-                fvs = fvs.remove(&a.name);
+                fvs = fvs.remove(a);
             }
             fvs
         }
@@ -95,4 +98,13 @@ pub fn free_variables(expr: &UntypedExpression) -> HashTrieSet<String> {
         }
         UntypedExpression::AnnotatedExpression(e) => free_variables(&e.src),
     }
+}
+
+pub enum TypeInfoResult {
+    Complete(TypeInfo),
+    WaitingOn(),
+}
+
+pub fn type_assess(ctx: &HashTrieMap<String, TypeInfo>) -> TypeInfoResult {
+    todo!()
 }

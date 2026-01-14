@@ -1,11 +1,12 @@
-use std::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
 pub mod full_untyped;
+pub mod identifiers_linked;
 
 pub trait ExpressionType: Debug {}
 
 pub trait StatementType: Debug {}
 
-pub trait ArgDefType: Debug {}
+pub trait ArgDefCollectionType: Debug {}
 
 pub trait BodyType: Debug {}
 
@@ -13,7 +14,7 @@ pub trait CapturesInfoType: Debug {}
 
 pub trait AnnotationType: Debug {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ArithmeticOp {
     Add,
     Sub,
@@ -24,39 +25,43 @@ pub enum ArithmeticOp {
     Geq,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FourArithmeticExpression<Arg: ExpressionType> {
     pub op: ArithmeticOp,
     pub left: Arg,
     pub right: Arg,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CallExpression<FnType: ExpressionType, Arg: ExpressionType> {
     pub fn_expr: FnType,
     pub args: Vec<(String, Arg)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MemberExpression<OwnerType: ExpressionType> {
     pub owner: OwnerType,
     pub name: String,
 }
 
-#[derive(Debug)]
-pub struct LambdaExpression<ArgDef: ArgDefType, Body: BodyType, Captures: CapturesInfoType> {
-    pub args: Vec<ArgDef>,
+#[derive(Debug, Clone)]
+pub struct LambdaExpression<
+    ArgDefCollection: ArgDefCollectionType,
+    Body: BodyType,
+    Captures: CapturesInfoType,
+> {
+    pub args: ArgDefCollection,
     pub body: Body,
     pub caps: Captures,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AnnotatedExpression<SourceType: ExpressionType, Annotation: AnnotationType> {
     pub src: SourceType,
     pub annotations: Vec<Annotation>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StructExpression<FieldExpr: ExpressionType> {
     pub fields: Vec<(String, FieldExpr)>,
 }
@@ -66,20 +71,20 @@ pub struct LiteralExpression<Val: Clone + Copy> {
     pub v: Val,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IdentifierExpression {
     pub name: String,
 }
 
 pub trait Identifier: Debug {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AssignmentStatement<Id: Identifier, Expr: ExpressionType> {
     pub id: Id,
     pub rhs: Expr,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DeclAssignmentStatement<Id: Identifier, Expr: ExpressionType> {
     pub id: Id,
     pub rhs: Expr,

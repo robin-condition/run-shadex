@@ -1,15 +1,12 @@
+use std::collections::HashMap;
+
 use crate::nodedef::ast::{
-    AnnotatedExpression, AnnotationType, ArgDefType, AssignmentStatement, BodyType, CallExpression,
-    CapturesInfoType, ExpressionType, FourArithmeticExpression, Identifier, LambdaExpression,
-    LiteralExpression, MemberExpression, StructExpression,
+    AnnotatedExpression, AnnotationType, ArgDefCollectionType, AssignmentStatement, BodyType,
+    CallExpression, CapturesInfoType, ExpressionType, FourArithmeticExpression, Identifier,
+    LambdaExpression, LiteralExpression, MemberExpression, StructExpression,
 };
 
-#[derive(Debug)]
-pub struct ArgName {
-    pub name: String,
-}
-
-impl ArgDefType for ArgName {}
+impl ArgDefCollectionType for Vec<String> {}
 
 #[derive(Debug)]
 pub struct BlockStatement {}
@@ -21,7 +18,7 @@ impl CapturesInfoType for () {}
 #[derive(Debug)]
 pub enum UntypedExpression {
     Arithmetic(FourArithmeticExpression<Box<UntypedExpression>>),
-    Lambda(LambdaExpression<ArgName, UntypedBody, ()>),
+    Lambda(LambdaExpression<Vec<String>, UntypedBody, ()>),
     Call(CallExpression<Box<UntypedExpression>, UntypedExpression>),
     LiteralI32(LiteralExpression<i32>),
     LiteralU32(LiteralExpression<u32>),
@@ -36,7 +33,7 @@ impl ExpressionType for Box<UntypedExpression> {}
 
 #[derive(Debug)]
 pub enum UntypedStatement {
-    Assignment(AssignmentStatement<String, UntypedExpression>),
+    //Assignment(AssignmentStatement<String, UntypedExpression>),
     DeclAssignment(AssignmentStatement<String, UntypedExpression>),
 }
 
@@ -56,3 +53,9 @@ pub struct UntypedBody {
 }
 
 impl BodyType for UntypedBody {}
+
+#[derive(Debug)]
+pub struct GlobalUntypedExprDefs {
+    pub map: HashMap<String, UntypedExpression>,
+    pub names: Vec<String>,
+}
