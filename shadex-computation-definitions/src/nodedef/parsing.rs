@@ -19,8 +19,8 @@ type MyError<'a> = Error<InputSpan<'a>>;
 
 use crate::nodedef::ast::{
     AnnotatedExpression, ArithmeticOp, AssignmentStatement, CallExpression,
-    FourArithmeticExpression, LambdaExpression, LiteralExpression, MemberExpression,
-    StructExpression,
+    FourArithmeticExpression, LambdaExpression, LiteralExpression, LiteralExpressionNumber,
+    MemberExpression, StructExpression,
     full_untyped::{
         GlobalUntypedExprDefs, ScopedIdentifier, UntypedBody, UntypedExpression, UntypedStatement,
     },
@@ -163,11 +163,17 @@ fn parse_scoped_ident<'a>()
 
 fn parse_atom<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
     alt((
-        terminated(parse_f32(), tag("f32"))
-            .map(|f| UntypedExpression::LiteralF32(LiteralExpression { v: f })),
-        terminated(parse_u32(), tag("u32"))
-            .map(|v| UntypedExpression::LiteralU32(LiteralExpression { v })),
-        parse_i32().map(|v| UntypedExpression::LiteralI32(LiteralExpression { v })),
+        terminated(parse_f32(), tag("f32")).map(|f| {
+            UntypedExpression::Literal(LiteralExpressionNumber::LiteralF32(LiteralExpression {
+                v: f,
+            }))
+        }),
+        terminated(parse_u32(), tag("u32")).map(|v| {
+            UntypedExpression::Literal(LiteralExpressionNumber::LiteralU32(LiteralExpression { v }))
+        }),
+        parse_i32().map(|v| {
+            UntypedExpression::Literal(LiteralExpressionNumber::LiteralI32(LiteralExpression { v }))
+        }),
         parse_scoped_ident().map(UntypedExpression::ScopedIdentifier),
         parse_lambda_decl(),
         delimited(ws(tag("(")), parse_expr(), ws(tag(")"))),

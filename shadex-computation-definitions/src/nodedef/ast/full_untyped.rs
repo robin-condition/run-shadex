@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use crate::nodedef::ast::{
     AnnotatedExpression, AnnotationType, ArgDefCollectionType, AssignmentStatement, BodyType,
     CallExpression, CapturesInfoType, ExpressionType, FourArithmeticExpression, Identifier,
-    LambdaExpression, LiteralExpression, MemberExpression, StructExpression,
+    LambdaExpression, LiteralExpression, LiteralExpressionNumber, MemberExpression,
+    StructExpression,
 };
 
 impl ArgDefCollectionType for Vec<String> {}
@@ -20,9 +21,7 @@ pub enum UntypedExpression {
     Arithmetic(FourArithmeticExpression<Box<UntypedExpression>>),
     Lambda(LambdaExpression<Vec<String>, UntypedBody, ()>),
     Call(CallExpression<Box<UntypedExpression>, UntypedExpression>),
-    LiteralI32(LiteralExpression<i32>),
-    LiteralU32(LiteralExpression<u32>),
-    LiteralF32(LiteralExpression<f32>),
+    Literal(LiteralExpressionNumber),
     MemberAccess(MemberExpression<Box<UntypedExpression>>),
     ScopedIdentifier(ScopedIdentifier),
     StructConstructor(StructExpression<UntypedExpression>),

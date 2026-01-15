@@ -17,6 +17,9 @@ DEF add: (a, b) => {
     a.val() + b.val()
 }
 
+DEF attrx: (x) => {x}
+DEF attry: (y) => {y}
+
 DEF sum: (f) => {
     let j = f.val<x>();
     j(x: 2).val() + j(x: 3).val()
@@ -25,5 +28,15 @@ DEF sum: (f) => {
 DEF vector: (x, y, z) => {
     (comp) => {
         core::or(cond: () => {comp.val() == 0}, a: x, b: core::or(cond: () => {comp.val() == 1}, a: y, b: z))
+    }
+}
+
+DEF demoprogram: () => {
+    let my_x = attrx;
+    let my_y = attry;
+    (x, y) => {
+        let res_x = attrx(x: x);
+        let res_y = attry(y: y);
+        vector(x: res_x, y: res_y, z: add(a: res_x, b: res_y))
     }
 }

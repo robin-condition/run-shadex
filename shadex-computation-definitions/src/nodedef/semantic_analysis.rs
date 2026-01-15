@@ -77,9 +77,7 @@ pub fn free_variables(expr: &UntypedExpression) -> HashTrieSet<String> {
             }
             res
         }
-        UntypedExpression::LiteralI32(_) => HashTrieSet::new(),
-        UntypedExpression::LiteralU32(_) => HashTrieSet::new(),
-        UntypedExpression::LiteralF32(_) => HashTrieSet::new(),
+        UntypedExpression::Literal(_) => HashTrieSet::new(),
         UntypedExpression::MemberAccess(e) => free_variables(&e.owner),
         UntypedExpression::ScopedIdentifier(e) => match e {
             crate::nodedef::ast::full_untyped::ScopedIdentifier::InScope(_, _) => {

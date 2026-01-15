@@ -71,6 +71,13 @@ pub struct LiteralExpression<Val: Clone + Copy> {
     pub v: Val,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum LiteralExpressionNumber {
+    LiteralI32(LiteralExpression<i32>),
+    LiteralU32(LiteralExpression<u32>),
+    LiteralF32(LiteralExpression<f32>),
+}
+
 #[derive(Debug, Clone)]
 pub struct IdentifierExpression {
     pub name: String,

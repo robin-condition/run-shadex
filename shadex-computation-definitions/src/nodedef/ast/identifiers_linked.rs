@@ -5,7 +5,7 @@ use rpds::HashTrieMap;
 use crate::nodedef::ast::{
     AnnotatedExpression, AnnotationType, ArgDefCollectionType, AssignmentStatement, BodyType,
     CallExpression, ExpressionType, FourArithmeticExpression, Identifier, LambdaExpression,
-    LiteralExpression, MemberExpression, StructExpression,
+    LiteralExpression, LiteralExpressionNumber, MemberExpression, StructExpression,
     full_untyped::{GlobalUntypedExprDefs, ScopedIdentifier, UntypedBody, UntypedExpression},
 };
 
@@ -62,9 +62,7 @@ pub enum NameLinkedExpression {
     Arithmetic(FourArithmeticExpression<Box<NameLinkedExpression>>),
     Lambda(LambdaExpression<Vec<LambdaArgDef>, NameLinkedBody, ()>),
     Call(CallExpression<Box<NameLinkedExpression>, NameLinkedExpression>),
-    LiteralI32(LiteralExpression<i32>),
-    LiteralU32(LiteralExpression<u32>),
-    LiteralF32(LiteralExpression<f32>),
+    Literal(LiteralExpressionNumber),
     MemberAccess(MemberExpression<Box<NameLinkedExpression>>),
     IdRef(IdentifierReference),
     Global(GlobalReference),
@@ -181,9 +179,7 @@ fn from_untyped(
                 .map(|(a, b)| (a.clone(), from_untyped(ctx, id_provider, b)))
                 .collect(),
         }),
-        UntypedExpression::LiteralI32(e) => NameLinkedExpression::LiteralI32(e.clone()),
-        UntypedExpression::LiteralU32(e) => NameLinkedExpression::LiteralU32(e.clone()),
-        UntypedExpression::LiteralF32(e) => NameLinkedExpression::LiteralF32(e.clone()),
+        UntypedExpression::Literal(e) => NameLinkedExpression::Literal(e.clone()),
         UntypedExpression::MemberAccess(e) => {
             NameLinkedExpression::MemberAccess(MemberExpression {
                 owner: Box::new(from_untyped(ctx, id_provider, &e.owner)),
