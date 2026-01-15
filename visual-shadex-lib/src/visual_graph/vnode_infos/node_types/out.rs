@@ -16,15 +16,11 @@ thread_local! {
                     inputs: [
                         (
                             "x".to_string(),
-                            Box::new(ValueType::primitive(PrimitiveType::U32(
-                                U32Boundedness::Bounded(1024),
-                            ))),
+                            Box::new(ValueType::primitive(PrimitiveType::F32)),
                         ),
                         (
                             "y".to_string(),
-                            Box::new(ValueType::primitive(PrimitiveType::U32(
-                                U32Boundedness::Bounded(1024),
-                            ))),
+                            Box::new(ValueType::primitive(PrimitiveType::F32)),
                         ),
                         (
                             "component".to_string(),
