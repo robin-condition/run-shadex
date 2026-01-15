@@ -32,11 +32,13 @@ DEF vector: (x, y, z) => {
 }
 
 DEF demoprogram: () => {
-    let my_x = attrx;
-    let my_y = attry;
+    let myx = attrx;
+    let myy = attry;
     (x, y) => {
-        let res_x = attrx(x: x);
-        let res_y = attry(y: y);
-        vector(x: res_x, y: res_y, z: add(a: res_x, b: res_y))
+        let resx = attrx(x: x);
+        let resy = attry(y: y);
+        vector(x: resx, y: resy, z: add(a: resx, b: resy))
     }
 }
+
+//

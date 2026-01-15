@@ -7,6 +7,7 @@ use crate::nodedef::ast::{
     CallExpression, ExpressionType, FourArithmeticExpression, Identifier, LambdaExpression,
     LiteralExpression, LiteralExpressionNumber, MemberExpression, StructExpression,
     full_untyped::{GlobalUntypedExprDefs, ScopedIdentifier, UntypedBody, UntypedExpression},
+    mathy_ast::ArithmeticOrLiteralOrId,
 };
 
 #[derive(Debug, Clone)]
@@ -58,14 +59,17 @@ pub enum GlobalReference {
 impl ArgDefCollectionType for Vec<LambdaArgDef> {}
 
 #[derive(Debug, Clone)]
+pub enum IdRefLocalOrGlobal {
+    Id(IdentifierReference),
+    Glob(GlobalReference),
+}
+
+#[derive(Debug, Clone)]
 pub enum NameLinkedExpression {
-    Arithmetic(FourArithmeticExpression<Box<NameLinkedExpression>>),
+    Arithmetic(ArithmeticOrLiteralOrId<Box<NameLinkedExpression>, IdRefLocalOrGlobal>),
     Lambda(LambdaExpression<Vec<LambdaArgDef>, NameLinkedBody, ()>),
     Call(CallExpression<Box<NameLinkedExpression>, NameLinkedExpression>),
-    Literal(LiteralExpressionNumber),
     MemberAccess(MemberExpression<Box<NameLinkedExpression>>),
-    IdRef(IdentifierReference),
-    Global(GlobalReference),
     StructConstructor(StructExpression<NameLinkedExpression>),
     AnnotatedExpression(AnnotatedExpression<Box<NameLinkedExpression>, String>),
 }
@@ -146,12 +150,14 @@ fn from_untyped(
     expr: &UntypedExpression,
 ) -> NameLinkedExpression {
     match expr {
-        UntypedExpression::Arithmetic(e) => {
-            NameLinkedExpression::Arithmetic(FourArithmeticExpression {
-                op: e.op.clone(),
-                left: Box::new(from_untyped(ctx, id_provider, &e.left)),
-                right: Box::new(from_untyped(ctx, id_provider, &e.right)),
-            })
+        UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Arithmetic(e)) => {
+            NameLinkedExpression::Arithmetic(ArithmeticOrLiteralOrId::Arithmetic(
+                FourArithmeticExpression {
+                    op: e.op.clone(),
+                    left: Box::new(from_untyped(ctx, id_provider, &e.left)),
+                    right: Box::new(from_untyped(ctx, id_provider, &e.right)),
+                },
+            ))
         }
         UntypedExpression::Lambda(e) => {
             let mut arg_names = Vec::new();
@@ -179,18 +185,24 @@ fn from_untyped(
                 .map(|(a, b)| (a.clone(), from_untyped(ctx, id_provider, b)))
                 .collect(),
         }),
-        UntypedExpression::Literal(e) => NameLinkedExpression::Literal(e.clone()),
+        UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Literal(e)) => {
+            NameLinkedExpression::Arithmetic(ArithmeticOrLiteralOrId::Literal(e.clone()))
+        }
         UntypedExpression::MemberAccess(e) => {
             NameLinkedExpression::MemberAccess(MemberExpression {
                 owner: Box::new(from_untyped(ctx, id_provider, &e.owner)),
                 name: e.name.clone(),
             })
         }
-        UntypedExpression::ScopedIdentifier(e) => match e {
+        UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Id(e)) => match e {
             ScopedIdentifier::InScope(scope, id) => {
-                NameLinkedExpression::Global(GlobalReference::Scoped(id.clone()))
+                NameLinkedExpression::Arithmetic(ArithmeticOrLiteralOrId::Id(
+                    IdRefLocalOrGlobal::Glob(GlobalReference::Scoped(id.clone())),
+                ))
             }
-            ScopedIdentifier::Scopeless(id) => NameLinkedExpression::IdRef(*ctx.get(id).unwrap()),
+            ScopedIdentifier::Scopeless(id) => NameLinkedExpression::Arithmetic(
+                ArithmeticOrLiteralOrId::Id(IdRefLocalOrGlobal::Id(*ctx.get(id).unwrap())),
+            ),
         },
         UntypedExpression::StructConstructor(e) => {
             NameLinkedExpression::StructConstructor(StructExpression {

@@ -24,6 +24,7 @@ use crate::nodedef::ast::{
     full_untyped::{
         GlobalUntypedExprDefs, ScopedIdentifier, UntypedBody, UntypedExpression, UntypedStatement,
     },
+    mathy_ast::ArithmeticOrLiteralOrId,
 };
 
 fn space_or_comment<'a, E: ParseError<InputSpan<'a>>>()
@@ -163,18 +164,30 @@ fn parse_scoped_ident<'a>()
 
 fn parse_atom<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
     alt((
-        terminated(parse_f32(), tag("f32")).map(|f| {
-            UntypedExpression::Literal(LiteralExpressionNumber::LiteralF32(LiteralExpression {
-                v: f,
-            }))
-        }),
-        terminated(parse_u32(), tag("u32")).map(|v| {
-            UntypedExpression::Literal(LiteralExpressionNumber::LiteralU32(LiteralExpression { v }))
-        }),
-        parse_i32().map(|v| {
-            UntypedExpression::Literal(LiteralExpressionNumber::LiteralI32(LiteralExpression { v }))
-        }),
-        parse_scoped_ident().map(UntypedExpression::ScopedIdentifier),
+        terminated(parse_f32(), tag("f32"))
+            .map(|f| {
+                ArithmeticOrLiteralOrId::Literal(LiteralExpressionNumber::LiteralF32(
+                    LiteralExpression { v: f },
+                ))
+            })
+            .map(UntypedExpression::Arithmetic),
+        terminated(parse_u32(), tag("u32"))
+            .map(|v| {
+                ArithmeticOrLiteralOrId::Literal(LiteralExpressionNumber::LiteralU32(
+                    LiteralExpression { v },
+                ))
+            })
+            .map(UntypedExpression::Arithmetic),
+        parse_i32()
+            .map(|v| {
+                ArithmeticOrLiteralOrId::Literal(LiteralExpressionNumber::LiteralI32(
+                    LiteralExpression { v },
+                ))
+            })
+            .map(UntypedExpression::Arithmetic),
+        parse_scoped_ident()
+            .map(ArithmeticOrLiteralOrId::Id)
+            .map(UntypedExpression::Arithmetic),
         parse_lambda_decl(),
         delimited(ws(tag("(")), parse_expr(), ws(tag(")"))),
         parse_struct_ctor(),
@@ -269,11 +282,13 @@ pub fn parse_term<'a>()
         .map(|(strt, ops)| {
             let mut res = strt;
             for op in ops {
-                res = UntypedExpression::Arithmetic(FourArithmeticExpression {
-                    op: op.0,
-                    left: Box::new(res),
-                    right: Box::new(op.1),
-                });
+                res = UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Arithmetic(
+                    FourArithmeticExpression {
+                        op: op.0,
+                        left: Box::new(res),
+                        right: Box::new(op.1),
+                    },
+                ));
             }
             res
         })
@@ -294,11 +309,13 @@ pub fn parse_sum<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression,
         .map(|(strt, ops)| {
             let mut res = strt;
             for op in ops {
-                res = UntypedExpression::Arithmetic(FourArithmeticExpression {
-                    op: op.0,
-                    left: Box::new(res),
-                    right: Box::new(op.1),
-                });
+                res = UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Arithmetic(
+                    FourArithmeticExpression {
+                        op: op.0,
+                        left: Box::new(res),
+                        right: Box::new(op.1),
+                    },
+                ));
             }
             res
         })
@@ -320,11 +337,13 @@ pub fn parse_comparator_level<'a>()
         .map(|(strt, ops)| {
             let mut res = strt;
             if let Some(op) = ops {
-                res = UntypedExpression::Arithmetic(FourArithmeticExpression {
-                    op: op.0,
-                    left: Box::new(res),
-                    right: Box::new(op.1),
-                });
+                res = UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Arithmetic(
+                    FourArithmeticExpression {
+                        op: op.0,
+                        left: Box::new(res),
+                        right: Box::new(op.1),
+                    },
+                ));
             }
             res
         })

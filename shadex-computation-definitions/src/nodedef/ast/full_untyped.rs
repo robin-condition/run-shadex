@@ -4,7 +4,7 @@ use crate::nodedef::ast::{
     AnnotatedExpression, AnnotationType, ArgDefCollectionType, AssignmentStatement, BodyType,
     CallExpression, CapturesInfoType, ExpressionType, FourArithmeticExpression, Identifier,
     LambdaExpression, LiteralExpression, LiteralExpressionNumber, MemberExpression,
-    StructExpression,
+    StructExpression, mathy_ast::ArithmeticOrLiteralOrId,
 };
 
 impl ArgDefCollectionType for Vec<String> {}
@@ -18,12 +18,10 @@ impl CapturesInfoType for () {}
 
 #[derive(Debug)]
 pub enum UntypedExpression {
-    Arithmetic(FourArithmeticExpression<Box<UntypedExpression>>),
+    Arithmetic(ArithmeticOrLiteralOrId<Box<UntypedExpression>, ScopedIdentifier>),
     Lambda(LambdaExpression<Vec<String>, UntypedBody, ()>),
     Call(CallExpression<Box<UntypedExpression>, UntypedExpression>),
-    Literal(LiteralExpressionNumber),
     MemberAccess(MemberExpression<Box<UntypedExpression>>),
-    ScopedIdentifier(ScopedIdentifier),
     StructConstructor(StructExpression<UntypedExpression>),
     AnnotatedExpression(AnnotatedExpression<Box<UntypedExpression>, String>),
 }
@@ -44,6 +42,8 @@ pub enum ScopedIdentifier {
     InScope(Box<ScopedIdentifier>, String),
     Scopeless(String),
 }
+
+impl Identifier for ScopedIdentifier {}
 
 #[derive(Debug)]
 pub struct UntypedBody {

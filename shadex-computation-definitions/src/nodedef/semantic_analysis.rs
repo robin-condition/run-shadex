@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use rpds::{HashTrieMap, HashTrieSet};
 
-use crate::nodedef::ast::full_untyped::{UntypedBody, UntypedExpression, UntypedStatement};
+use crate::nodedef::ast::{
+    full_untyped::{UntypedBody, UntypedExpression, UntypedStatement},
+    mathy_ast::ArithmeticOrLiteralOrId,
+};
 
 #[derive(Debug)]
 pub enum PrimitiveType {
@@ -60,7 +63,7 @@ pub fn statement_fvs(stmt: &UntypedStatement, belows: HashTrieSet<String>) -> Ha
 
 pub fn free_variables(expr: &UntypedExpression) -> HashTrieSet<String> {
     match expr {
-        UntypedExpression::Arithmetic(e) => {
+        UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Arithmetic(e)) => {
             set_union(free_variables(&e.left), free_variables(&e.right))
         }
         UntypedExpression::Lambda(e) => {
@@ -77,9 +80,11 @@ pub fn free_variables(expr: &UntypedExpression) -> HashTrieSet<String> {
             }
             res
         }
-        UntypedExpression::Literal(_) => HashTrieSet::new(),
+        UntypedExpression::Arithmetic(super::ast::mathy_ast::ArithmeticOrLiteralOrId::Literal(
+            _,
+        )) => HashTrieSet::new(),
         UntypedExpression::MemberAccess(e) => free_variables(&e.owner),
-        UntypedExpression::ScopedIdentifier(e) => match e {
+        UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Id(e)) => match e {
             crate::nodedef::ast::full_untyped::ScopedIdentifier::InScope(_, _) => {
                 HashTrieSet::new()
             }
