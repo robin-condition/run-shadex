@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use nom::{
-    Or, Parser,
+    AsChar, IResult, Input, Or, Parser,
     branch::alt,
     bytes::complete::{tag, take_until},
     character::{
@@ -46,8 +46,25 @@ fn ws<'a, O, E: ParseError<InputSpan<'a>>, F: Parser<InputSpan<'a>, Output = O, 
     delimited(space_or_comment(), f, space_or_comment())
 }
 
+fn identifier_start_chars<T, E: ParseError<T>>(inp: T) -> IResult<T, T, E>
+where
+    T: Input<Item = char>,
+{
+    inp.split_at_position1_complete(
+        |c| !(c.is_alpha() || c == '_'),
+        nom::error::ErrorKind::Alpha,
+    )
+}
+
+fn identifier_rest_chars<T, E: ParseError<T>>(inp: T) -> IResult<T, T, E>
+where
+    T: Input<Item = char>,
+{
+    inp.split_at_position_complete(|c| !(c.is_alpha() || c.is_dec_digit() || c == '_'))
+}
+
 fn parse_identifier<'a>() -> impl Parser<InputSpan<'a>, Output = String, Error = MyError<'a>> {
-    ws((alpha1, alphanumeric0)
+    ws((identifier_start_chars, identifier_rest_chars)
         // .map(|b| String::from_utf8_lossy(b.0).to_string() + String::from_utf8_lossy(b.1).as_ref()))
         .map(|b: (&str, &str)| b.0.to_string() + b.1))
 }
