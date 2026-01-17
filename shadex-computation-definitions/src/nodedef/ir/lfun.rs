@@ -74,6 +74,17 @@ impl<TArg: ValueRefType, Op: OpCode<TArg>, Typ: TypeAnnotation> FnBody<TArg, Op,
         }
     }
 
+    fn apply_next_to_prev(&mut self, next: Next, new_prev: Prev) {
+        match next {
+            Next::End => {
+                self.last = new_prev;
+            }
+            Next::Instr(instr_id) => {
+                self.instrs.get_mut(&instr_id).as_mut().unwrap().prev = new_prev;
+            }
+        }
+    }
+
     fn prev_to_next(&self, prev: Prev) -> Next {
         match prev {
             Prev::Begin => self.first,
@@ -96,6 +107,16 @@ impl<TArg: ValueRefType, Op: OpCode<TArg>, Typ: TypeAnnotation> FnBody<TArg, Op,
         };
         self.instrs.insert(new_id, new_instr);
         new_id
+    }
+
+    pub fn remove_instr(&mut self, id: InstrId) {
+        let before_instr = self.instrs.get(&id).unwrap().prev;
+        let after_instr = self.instrs.get(&id).unwrap().next;
+
+        self.apply_next_to_prev(after_instr, before_instr);
+        self.apply_prev_to_next(before_instr, after_instr);
+
+        self.instrs.remove(&id);
     }
 }
 

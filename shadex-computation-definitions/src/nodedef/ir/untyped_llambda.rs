@@ -11,6 +11,8 @@ use crate::nodedef::{
     },
 };
 
+pub mod opt;
+
 pub type UntypedLLambdaType = ();
 
 impl TypeAnnotation for UntypedLLambdaType {}
