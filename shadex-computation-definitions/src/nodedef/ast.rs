@@ -16,6 +16,8 @@ pub trait CapturesInfoType: Debug {}
 
 pub trait AnnotationType: Debug {}
 
+pub mod linearize_untyped;
+
 #[derive(Debug, Clone)]
 pub enum ArithmeticOp {
     Add,
@@ -28,7 +30,7 @@ pub enum ArithmeticOp {
 }
 
 #[derive(Debug, Clone)]
-pub struct FourArithmeticExpression<Arg: ExpressionType> {
+pub struct FourArithmeticExpression<Arg> {
     pub op: ArithmeticOp,
     pub left: Arg,
     pub right: Arg,

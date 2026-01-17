@@ -9,7 +9,7 @@ DEF test: (a, b) => {
     // Functions MUST be called with named arguments. No alternative.
     let blah = core::test(t: myfn);
     // Values can have function members
-    let t = myfn(x: 2).val<a,b>();
+    //let t = myfn(x: 2).val<a,b>();
     a
 }
 
@@ -20,10 +20,10 @@ DEF add: (a, b) => {
 DEF attrx: (x) => {x}
 DEF attry: (y) => {y}
 
-DEF sum: (f) => {
-    let j = f.val<x>();
-    j(x: 2).val() + j(x: 3).val()
-}
+//DEF sum: (f) => {
+    //let j = f.val<x>();
+//    j(x: 2).val() + j(x: 3).val()
+//}
 
 DEF vector: (x, y, z) => {
     (comp) => {

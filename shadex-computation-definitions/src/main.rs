@@ -16,11 +16,18 @@ fn main() {
     println!("{:?}", v);
     println!("{:?}", unit.map.get("vector").unwrap());
 
-    let id_linked = identifiers_linked::from_untyped_global(&unit);
+    //let id_linked = identifiers_linked::from_untyped_global(&unit);
 
     println!("----");
 
-    let id = id_linked.name_to_id.get("vector").unwrap();
+    let mut emitted = unit.emit();
+    emitted.1.remove_unnecessary_captures_in_children();
 
-    println!("{:?}", id_linked.map.get(id).unwrap());
+    println!("{}", emitted.1);
+
+    //let id = id_linked.name_to_id.get("vector").unwrap();
+
+    //println!("{:?}", id_linked.map.get(id).unwrap());
+
+    //println!("{:?}", emitted.1);
 }
