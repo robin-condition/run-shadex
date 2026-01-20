@@ -381,6 +381,14 @@ impl<'a> Parser<InputSpan<'a>> for ExprParser {
     }
 }
 
+impl ExprParser {
+    pub fn whole_file<'a>(
+        self,
+    ) -> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = UntypedExpression> {
+        all_consuming(self)
+    }
+}
+
 fn parse_global_def<'a>()
 -> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = (String, UntypedExpression)> {
     preceded(
