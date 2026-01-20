@@ -3641,7 +3641,6 @@ dependencies = [
  "egui",
  "env_logger",
  "log",
- "nodedef_macros",
  "nom",
  "paste",
  "rpds",
@@ -4144,9 +4143,11 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "log",
+ "nodedef_macros",
  "serde",
  "serde_json",
  "shadex-backend",
+ "shadex-computation-definitions",
  "typetag",
  "wgpu",
 ]
