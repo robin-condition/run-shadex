@@ -3201,6 +3201,7 @@ dependencies = [
  "nom_locate",
  "partitions",
  "rpds",
+ "wgpu",
  "wgsl-parse",
 ]
 

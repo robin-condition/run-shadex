@@ -19,11 +19,21 @@ pub trait AnnotationType: Debug {}
 pub mod linearize_untyped;
 
 #[derive(Debug, Clone)]
+pub enum MathOp {
+    Arith(ArithmeticOp),
+    Comp(BoolValuedOp),
+}
+
+#[derive(Debug, Clone)]
 pub enum ArithmeticOp {
     Add,
     Sub,
     Mult,
     Div,
+}
+
+#[derive(Debug, Clone)]
+pub enum BoolValuedOp {
     Eq,
     Leq,
     Geq,
@@ -31,7 +41,7 @@ pub enum ArithmeticOp {
 
 #[derive(Debug, Clone)]
 pub struct FourArithmeticExpression<Arg> {
-    pub op: ArithmeticOp,
+    pub op: MathOp,
     pub left: Arg,
     pub right: Arg,
 }

@@ -7,7 +7,7 @@ use crate::nodedef::ir::{
     lstruct::LStructOpCode,
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum LambdaValueRef {
     FnValueRef(FnValueRef),
     CaptureRef(CaptureId),

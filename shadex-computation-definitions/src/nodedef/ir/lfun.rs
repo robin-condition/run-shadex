@@ -8,7 +8,7 @@ use crate::nodedef::{
     },
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum FnValueRef {
     InstrId(InstrId),
     Arg(ParamId),

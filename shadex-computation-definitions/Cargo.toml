@@ -9,4 +9,5 @@ nom = "8.0.0"
 nom_locate = "5.0.0"
 partitions = "0.2.4"
 rpds = "1.2.0"
+wgpu = { version = "27.0.1", features = ["webgl"] }
 wgsl-parse = "0.3.2"

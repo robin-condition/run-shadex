@@ -1,7 +1,10 @@
 use std::{collections::HashSet, fmt::Display};
 
 use crate::nodedef::{
-    ast::{ArithmeticOp, LambdaExpression, LiteralExpressionNumber, full_untyped::UntypedBody},
+    ast::{
+        ArithmeticOp, BoolValuedOp, LambdaExpression, LiteralExpressionNumber, MathOp,
+        full_untyped::UntypedBody,
+    },
     ir::{
         CaptureId, Instruction, OpCode, ParamInfo, TypeAnnotation, ValueRefType,
         ldumb::LDumbOpCode,
@@ -20,10 +23,12 @@ impl TypeAnnotation for UntypedLLambdaType {}
 pub type UntypedLLambdaParamInfo = ();
 impl ParamInfo for UntypedLLambdaParamInfo {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UntypedLLambdaOpCode(
     LLambdaOpCode<LambdaValueRef, UntypedLLambdaParamInfo, Self, UntypedLLambdaType>,
 );
+
+pub mod interpreter;
 
 impl
     From<
@@ -118,16 +123,16 @@ impl Display for LambdaValueRef {
     }
 }
 
-impl Display for ArithmeticOp {
+impl Display for MathOp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ArithmeticOp::Add => write!(f, "+"),
-            ArithmeticOp::Sub => write!(f, "-"),
-            ArithmeticOp::Mult => write!(f, "*"),
-            ArithmeticOp::Div => write!(f, "/"),
-            ArithmeticOp::Eq => write!(f, "=="),
-            ArithmeticOp::Leq => write!(f, "<="),
-            ArithmeticOp::Geq => write!(f, ">="),
+            MathOp::Arith(ArithmeticOp::Add) => write!(f, "+"),
+            MathOp::Arith(ArithmeticOp::Sub) => write!(f, "-"),
+            MathOp::Arith(ArithmeticOp::Mult) => write!(f, "*"),
+            MathOp::Arith(ArithmeticOp::Div) => write!(f, "/"),
+            MathOp::Comp(BoolValuedOp::Eq) => write!(f, "=="),
+            MathOp::Comp(BoolValuedOp::Leq) => write!(f, "<="),
+            MathOp::Comp(BoolValuedOp::Geq) => write!(f, ">="),
         }
     }
 }

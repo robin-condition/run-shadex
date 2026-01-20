@@ -18,8 +18,8 @@ type InputSpan<'a> = &'a str;
 type MyError<'a> = Error<InputSpan<'a>>;
 
 use crate::nodedef::ast::{
-    AnnotatedExpression, ArithmeticOp, AssignmentStatement, CallExpression,
-    FourArithmeticExpression, LambdaExpression, LiteralExpression, LiteralExpressionNumber,
+    AnnotatedExpression, ArithmeticOp, AssignmentStatement, BoolValuedOp, CallExpression,
+    FourArithmeticExpression, LambdaExpression, LiteralExpression, LiteralExpressionNumber, MathOp,
     MemberExpression, StructExpression,
     full_untyped::{
         GlobalUntypedExprDefs, ScopedIdentifier, UntypedBody, UntypedExpression, UntypedStatement,
@@ -290,8 +290,8 @@ pub fn parse_term<'a>()
         parse_factor(),
         many0((
             alt((
-                ws(tag("*")).map(|_| ArithmeticOp::Mult),
-                ws(tag("/")).map(|_| ArithmeticOp::Div),
+                ws(tag("*")).map(|_| MathOp::Arith(ArithmeticOp::Mult)),
+                ws(tag("/")).map(|_| MathOp::Arith(ArithmeticOp::Div)),
             )),
             parse_factor(),
         )),
@@ -317,8 +317,8 @@ pub fn parse_sum<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression,
         parse_term(),
         many0((
             alt((
-                ws(tag("+")).map(|_| ArithmeticOp::Add),
-                ws(tag("-")).map(|_| ArithmeticOp::Sub),
+                ws(tag("+")).map(|_| MathOp::Arith(ArithmeticOp::Add)),
+                ws(tag("-")).map(|_| MathOp::Arith(ArithmeticOp::Sub)),
             )),
             parse_term(),
         )),
@@ -344,9 +344,9 @@ pub fn parse_comparator_level<'a>()
         parse_sum(),
         opt((
             alt((
-                ws(tag("==")).map(|_| ArithmeticOp::Eq),
-                ws(tag(">=")).map(|_| ArithmeticOp::Geq),
-                ws(tag("<=")).map(|_| ArithmeticOp::Leq),
+                ws(tag("==")).map(|_| MathOp::Comp(BoolValuedOp::Eq)),
+                ws(tag(">=")).map(|_| MathOp::Comp(BoolValuedOp::Geq)),
+                ws(tag("<=")).map(|_| MathOp::Comp(BoolValuedOp::Leq)),
             )),
             parse_sum(),
         )),
