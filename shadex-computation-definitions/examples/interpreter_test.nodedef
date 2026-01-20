@@ -1,0 +1,11 @@
+DEF entry: () => {
+    let color_func = (x,y) => {
+
+        let total = x + y;
+
+        (c) => {
+            core::sel(cond: c == 0u32, then: x, else: total)
+        }
+    };
+    core::tex(w: 200u32, h: 100u32, d: 3u32, v: color_func)
+}

@@ -1,33 +1,57 @@
+use std::collections::HashMap;
+
+use image::Rgb;
 use nom::Parser;
+use rpds::HashTrieMap;
 use shadex_computation_definitions::nodedef::{
     ast::identifiers_linked,
+    ir::{
+        lfun::FnValueRef,
+        llambda::LambdaValueRef,
+        untyped_llambda::{
+            UntypedLLambdaOpCode,
+            interpreter::{Interpreter, LambdaValue, Value},
+        },
+    },
     parsing::{parse_expr, parse_global_def_file_specific, parse_term},
     semantic_analysis::free_variables,
 };
 
 fn main() {
     let unit = parse_global_def_file_specific(
-        include_str!("../examples/wip_testing.nodedef"), //    .as_bytes()
+        include_str!("../examples/interpreter_test.nodedef"), //    .as_bytes()
     )
     .unwrap();
-    let fvs = free_variables(&unit.map.get("test").unwrap());
-    println!("{:?}", unit);
-    let v: Vec<_> = fvs.iter().collect();
-    println!("{:?}", v);
-    println!("{:?}", unit.map.get("vector").unwrap());
-
-    //let id_linked = identifiers_linked::from_untyped_global(&unit);
-
-    println!("----");
 
     let mut emitted = unit.emit();
     emitted.1.remove_unnecessary_captures_in_children();
 
-    println!("{}", emitted.1);
+    let interp = Interpreter::new();
+    let val = emitted.0.get("entry").unwrap();
+    let instr_id = match val {
+        LambdaValueRef::FnValueRef(FnValueRef::InstrId(id)) => *id,
+        _ => panic!(),
+    };
 
-    //let id = id_linked.name_to_id.get("vector").unwrap();
+    let lambda_ctor = emitted.1.instrs.get(&instr_id).unwrap();
+    let lambda = interp.interpret(match &lambda_ctor.op.0 {
+        shadex_computation_definitions::nodedef::ir::llambda::LLambdaOpCode::ConstructLambda(lambda_def) => &lambda_def.fn_def.body,
+        _ => panic!()
+    }, &HashMap::new(), &HashMap::new()).unwrap();
+    let as_tex = match lambda {
+        Value::Tex(a, b, c, t) => (a, b, c, t),
+        _ => panic!(),
+    };
 
-    //println!("{:?}", id_linked.map.get(id).unwrap());
+    let vec = as_tex
+        .3
+        .into_iter()
+        .map(|f| (f.clamp(0f32, 1f32) * 256f32).clamp(0f32, 255f32) as u8)
+        .collect();
 
-    //println!("{:?}", emitted.1);
+    let img =
+        image::ImageBuffer::<Rgb<u8>, Vec<u8>>::from_vec(as_tex.0 as u32, as_tex.1 as u32, vec)
+            .unwrap();
+
+    img.save("results/test.png").unwrap();
 }

@@ -26,6 +26,7 @@ pub mod execution_types;
 pub enum SpecificScalar {
     F32(f32),
     I32(i32),
+    U32(u32),
     U8(u8),
     U1(bool),
 }
@@ -50,11 +51,20 @@ pub enum SpecificVector {
 }
 
 #[derive(Clone)]
+pub enum SpecialFn {
+    MakeTex,
+    Select,
+}
+
+#[derive(Clone)]
 pub enum Value {
     Scalar(SpecificScalar),
     Vector(SpecificVector),
     Function(LambdaValue),
     Struct(StructValue),
+
+    Tex(usize, usize, usize, Vec<f32>),
+    SpecialFn(SpecialFn),
 }
 
 impl ArithmeticOp {
@@ -105,6 +115,109 @@ impl Interpreter {
         Self {}
     }
 
+    fn interpret_special_fn(&self, spec: SpecialFn, args: &HashMap<String, Value>) -> Value {
+        match spec {
+            SpecialFn::MakeTex => {
+                let width = match args.get("w").unwrap() {
+                    Value::Scalar(SpecificScalar::U32(w)) => *w,
+                    _ => panic!(),
+                } as usize;
+                let height = match args.get("h").unwrap() {
+                    Value::Scalar(SpecificScalar::U32(w)) => *w,
+                    _ => panic!(),
+                } as usize;
+                let depth = match args.get("d").unwrap() {
+                    Value::Scalar(SpecificScalar::U32(w)) => *w,
+                    _ => panic!(),
+                } as usize;
+                let eval = match args.get("v").unwrap() {
+                    Value::Function(lam) => lam.clone(),
+                    _ => panic!(),
+                };
+
+                let mut tex = vec![0f32; width * height * depth];
+                let layer_size = width * depth;
+
+                let param_ids = [
+                    eval.def
+                        .fn_def
+                        .params
+                        .params_names
+                        .get("x")
+                        .unwrap()
+                        .clone(),
+                    eval.def
+                        .fn_def
+                        .params
+                        .params_names
+                        .get("y")
+                        .unwrap()
+                        .clone(),
+                ];
+
+                for y in 0..height {
+                    let starting_pos = layer_size * y;
+                    let ending_pos = starting_pos + layer_size;
+
+                    // This could be parallelized
+
+                    let editable = &mut tex[starting_pos..ending_pos];
+                    for x in 0..width {
+                        let starting_ind = x * depth;
+                        let ending_depth = starting_ind + depth;
+
+                        let mut argctx = HashMap::new();
+                        argctx.insert(
+                            param_ids[0],
+                            Value::Scalar(SpecificScalar::F32(x as f32 / width as f32)),
+                        );
+                        argctx.insert(
+                            param_ids[1],
+                            Value::Scalar(SpecificScalar::F32(y as f32 / height as f32)),
+                        );
+
+                        let component_evaluator = match self.interpret_lambda(&eval, argctx) {
+                            Value::Function(myfun) => myfun,
+                            _ => panic!(),
+                        };
+
+                        for c in 0..depth {
+                            let mut ctx2 = HashMap::new();
+                            ctx2.insert(
+                                component_evaluator
+                                    .def
+                                    .fn_def
+                                    .params
+                                    .params_names
+                                    .get("c")
+                                    .unwrap()
+                                    .clone(),
+                                Value::Scalar(SpecificScalar::U32(c as u32)),
+                            );
+                            let brightness = match self.interpret_lambda(&component_evaluator, ctx2)
+                            {
+                                Value::Scalar(SpecificScalar::F32(f)) => f,
+                                _ => panic!(),
+                            };
+                            editable[starting_ind + c] = brightness;
+                        }
+                    }
+                }
+
+                Value::Tex(width, height, depth, tex)
+            }
+            SpecialFn::Select => {
+                let cond = match args.get("cond").unwrap() {
+                    Value::Scalar(SpecificScalar::U1(b)) => *b,
+                    _ => panic!(),
+                };
+                let a = args.get("then").unwrap();
+                let b = args.get("else").unwrap();
+                (if cond { a } else { b }).clone()
+            }
+        }
+    }
+
     fn interpret_instr(
         &self,
         op: &UntypedLLambdaOpCode,
@@ -119,7 +232,17 @@ impl Interpreter {
                                 crate::nodedef::ir::ldumb::LDumbOpCode::Nop => panic!("No op!"),
                                 crate::nodedef::ir::ldumb::LDumbOpCode::ConstantNum(
                                     literal_expression_number,
-                                ) => todo!(),
+                                ) => match literal_expression_number {
+                                    crate::nodedef::ast::LiteralExpressionNumber::LiteralI32(l) => {
+                                        Value::Scalar(SpecificScalar::I32(l.v))
+                                    }
+                                    crate::nodedef::ast::LiteralExpressionNumber::LiteralU32(l) => {
+                                        Value::Scalar(SpecificScalar::U32(l.v))
+                                    }
+                                    crate::nodedef::ast::LiteralExpressionNumber::LiteralF32(l) => {
+                                        Value::Scalar(SpecificScalar::F32(l.v))
+                                    }
+                                },
                                 crate::nodedef::ir::ldumb::LDumbOpCode::Arithmetic(
                                     four_arithmetic_expression,
                                 ) => {
@@ -136,6 +259,10 @@ impl Interpreter {
                                             Value::Scalar(SpecificScalar::I32(l)),
                                             Value::Scalar(SpecificScalar::I32(r)),
                                         ) => apply_math_op(op, *l, *r, SpecificScalar::I32),
+                                        (
+                                            Value::Scalar(SpecificScalar::U32(l)),
+                                            Value::Scalar(SpecificScalar::U32(r)),
+                                        ) => apply_math_op(op, *l, *r, SpecificScalar::U32),
                                         (
                                             Value::Scalar(SpecificScalar::U8(l)),
                                             Value::Scalar(SpecificScalar::U8(r)),
@@ -182,7 +309,11 @@ impl Interpreter {
                         captured_values: HashTrieMap::new(),
                     })
                 }
-                crate::nodedef::ir::lfun::LFunOpCode::GlobalFn(_) => todo!(),
+                crate::nodedef::ir::lfun::LFunOpCode::GlobalFn(globfn) => match globfn.as_str() {
+                    "tex" => Value::SpecialFn(SpecialFn::MakeTex),
+                    "sel" => Value::SpecialFn(SpecialFn::Select),
+                    _ => panic!("Special function not implemented"),
+                },
                 crate::nodedef::ir::lfun::LFunOpCode::CallFn(func, arg_map) => {
                     let funcval = ctx.get(func).unwrap();
                     match funcval {
@@ -200,13 +331,14 @@ impl Interpreter {
                                 let arg_val = ctx.get(arg.1).unwrap().clone();
                                 argctx.insert(param_id, arg_val);
                             }
-                            let cap_map = lambda_value
-                                .captured_values
-                                .iter()
-                                .map(|(a, b)| (a.clone(), b.clone()))
-                                .collect();
-                            self.interpret(&lambda_value.def.fn_def.body, &argctx, &cap_map)
-                                .expect("Function must return the value")
+                            self.interpret_lambda(lambda_value, argctx)
+                        }
+                        Value::SpecialFn(spec_fn) => {
+                            let mut args = HashMap::new();
+                            for a in arg_map {
+                                args.insert(a.0.clone(), ctx.get(a.1).unwrap().clone());
+                            }
+                            self.interpret_special_fn(spec_fn.clone(), &args)
                         }
                         _ => panic!("Wanted a function value"),
                     }
@@ -223,6 +355,20 @@ impl Interpreter {
                 })
             }
         }
+    }
+
+    fn interpret_lambda(
+        &self,
+        lambda_value: &LambdaValue,
+        argctx: HashMap<ParamId, Value>,
+    ) -> Value {
+        let cap_map = lambda_value
+            .captured_values
+            .iter()
+            .map(|(a, b)| (a.clone(), b.clone()))
+            .collect();
+        self.interpret(&lambda_value.def.fn_def.body, &argctx, &cap_map)
+            .expect("Function must return the value")
     }
 
     pub fn interpret(

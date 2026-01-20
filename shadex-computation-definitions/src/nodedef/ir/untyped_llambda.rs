@@ -25,7 +25,7 @@ impl ParamInfo for UntypedLLambdaParamInfo {}
 
 #[derive(Debug, Clone)]
 pub struct UntypedLLambdaOpCode(
-    LLambdaOpCode<LambdaValueRef, UntypedLLambdaParamInfo, Self, UntypedLLambdaType>,
+    pub LLambdaOpCode<LambdaValueRef, UntypedLLambdaParamInfo, Self, UntypedLLambdaType>,
 );
 
 pub mod interpreter;
