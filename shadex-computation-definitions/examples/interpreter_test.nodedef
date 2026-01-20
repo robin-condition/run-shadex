@@ -3,8 +3,15 @@ DEF entry: () => {
 
         let total = x + y;
 
+        let dx = (x - 0.5f32);
+        let dy = (y - 0.5f32);
+        let distsqr = dx * dx + dy * dy;
+        let dist_diff = distsqr - 0.3f32 * 0.3f32;
+        let ddiffsqr = 1.0f32 - dist_diff * dist_diff * 60f32;
+
         (c) => {
-            core::sel(cond: c == 0u32, then: x, else: total)
+            core::sel(cond: c == 0u32, then: ddiffsqr, else: total)
+            //ddiffsqr
         }
     };
     core::tex(w: 200u32, h: 100u32, d: 3u32, v: color_func)
