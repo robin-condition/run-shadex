@@ -1,8 +1,10 @@
 use std::{
     collections::{HashMap, hash_map},
     ops::{Add, Deref, Div, Mul, Sub},
+    sync::Arc,
 };
 
+use archery::ArcTK;
 use rpds::HashTrieMap;
 
 use crate::nodedef::{
@@ -34,12 +36,12 @@ pub enum SpecificScalar {
 #[derive(Clone)]
 pub struct LambdaValue {
     pub def: UntypedLLambdaLambdaDef,
-    pub captured_values: HashTrieMap<CaptureId, Value>,
+    pub captured_values: HashTrieMap<CaptureId, Value, archery::shared_pointer::kind::ArcTK>,
 }
 
 #[derive(Clone)]
 pub struct StructValue {
-    pub fields: HashTrieMap<FieldId, Value>,
+    pub fields: HashTrieMap<FieldId, Value, ArcTK>,
 }
 
 #[derive(Clone, Copy)]
@@ -81,6 +83,8 @@ impl ArithmeticOp {
         }
     }
 }
+
+use rayon::prelude::*;
 
 impl BoolValuedOp {
     pub fn apply<T: PartialOrd + PartialEq>(self, l: T, r: T) -> bool {
@@ -155,55 +159,68 @@ impl Interpreter {
                         .clone(),
                 ];
 
+                let mut seg = tex.as_mut_slice();
+                let mut segments_vec = vec![];
                 for y in 0..height {
-                    let starting_pos = layer_size * y;
-                    let ending_pos = starting_pos + layer_size;
-
-                    // This could be parallelized
-
-                    let editable = &mut tex[starting_pos..ending_pos];
-                    for x in 0..width {
-                        let starting_ind = x * depth;
-                        let ending_depth = starting_ind + depth;
-
-                        let mut argctx = HashMap::new();
-                        argctx.insert(
-                            param_ids[0],
-                            Value::Scalar(SpecificScalar::F32(x as f32 / width as f32)),
-                        );
-                        argctx.insert(
-                            param_ids[1],
-                            Value::Scalar(SpecificScalar::F32(y as f32 / height as f32)),
-                        );
-
-                        let component_evaluator = match self.interpret_lambda(&eval, argctx) {
-                            Value::Function(myfun) => myfun,
-                            _ => panic!(),
-                        };
-
-                        for c in 0..depth {
-                            let mut ctx2 = HashMap::new();
-                            ctx2.insert(
-                                component_evaluator
-                                    .def
-                                    .fn_def
-                                    .params
-                                    .params_names
-                                    .get("c")
-                                    .unwrap()
-                                    .clone(),
-                                Value::Scalar(SpecificScalar::U32(c as u32)),
-                            );
-                            let brightness = match self.interpret_lambda(&component_evaluator, ctx2)
-                            {
-                                Value::Scalar(SpecificScalar::F32(f)) => f,
-                                _ => panic!(),
-                            };
-                            editable[starting_ind + c] = brightness;
-                        }
-                    }
+                    let (a, b) = seg.split_at_mut(layer_size);
+                    seg = b;
+                    segments_vec.push(a);
                 }
 
+                segments_vec
+                    .into_iter()
+                    .enumerate()
+                    //(0..height)
+                    //.map(|y| {
+                    //let starting_pos = layer_size * y;
+                    //let ending_pos = starting_pos + layer_size;
+                    //let editable = &mut tex[starting_pos..ending_pos];
+                    //    y
+                    //})
+                    .par_bridge()
+                    .for_each(|(y, editable)| {
+                        for x in 0..width {
+                            let starting_ind = x * depth;
+                            let ending_depth = starting_ind + depth;
+
+                            let mut argctx = HashMap::new();
+                            argctx.insert(
+                                param_ids[0],
+                                Value::Scalar(SpecificScalar::F32(x as f32 / width as f32)),
+                            );
+                            argctx.insert(
+                                param_ids[1],
+                                Value::Scalar(SpecificScalar::F32(y as f32 / height as f32)),
+                            );
+
+                            let component_evaluator = match self.interpret_lambda(&eval, argctx) {
+                                Value::Function(myfun) => myfun,
+                                _ => panic!(),
+                            };
+
+                            for c in 0..depth {
+                                let mut ctx2 = HashMap::new();
+                                ctx2.insert(
+                                    component_evaluator
+                                        .def
+                                        .fn_def
+                                        .params
+                                        .params_names
+                                        .get("c")
+                                        .unwrap()
+                                        .clone(),
+                                    Value::Scalar(SpecificScalar::U32(c as u32)),
+                                );
+                                let brightness =
+                                    match self.interpret_lambda(&component_evaluator, ctx2) {
+                                        Value::Scalar(SpecificScalar::F32(f)) => f,
+                                        _ => panic!(),
+                                    };
+                                editable[starting_ind + c] = brightness;
+                            }
+                        }
+                        ()
+                    });
                 Value::Tex(width, height, depth, tex)
             }
             SpecialFn::Select => {
@@ -290,7 +307,7 @@ impl Interpreter {
                         crate::nodedef::ir::lstruct::LStructOpCode::ConstructStruct(
                             struct_ctor,
                         ) => {
-                            let mut fld_ctx = HashTrieMap::new();
+                            let mut fld_ctx = HashTrieMap::new_sync();
                             for fld in &struct_ctor.field_names {
                                 let fld_valref = struct_ctor.field_infs.get(fld.1).unwrap();
                                 let fld_val = ctx.get(fld_valref).unwrap().clone();
@@ -306,7 +323,8 @@ impl Interpreter {
                             fn_def: fn_def.clone(),
                             captures_info: CapturesInfo::new(),
                         },
-                        captured_values: HashTrieMap::new(),
+                        captured_values:
+                            HashTrieMap::<_, _, archery::shared_pointer::kind::ArcTK>::new_sync(),
                     })
                 }
                 crate::nodedef::ir::lfun::LFunOpCode::GlobalFn(globfn) => match globfn.as_str() {
@@ -345,7 +363,7 @@ impl Interpreter {
                 }
             },
             crate::nodedef::ir::llambda::LLambdaOpCode::ConstructLambda(lambda_def) => {
-                let mut caps = HashTrieMap::new();
+                let mut caps = HashTrieMap::new_sync();
                 for (i, v) in &lambda_def.captures_info.captures {
                     caps = caps.insert(i.clone(), ctx.get(v).unwrap().clone());
                 }

@@ -600,14 +600,8 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08807e080ed7f9d5433fa9b275196cfc35414f66a0c79d864dc51a0d825231a3"
 dependencies = [
- "bit-vec 0.8.0",
+ "bit-vec",
 ]
-
-[[package]]
-name = "bit-vec"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f59bbe95d4e52a6398ec21238d31577f2b28a9d86807f06ca59d191d8440d0bb"
 
 [[package]]
 name = "bit-vec"
@@ -1048,6 +1042,12 @@ dependencies = [
  "block-buffer",
  "crypto-common",
 ]
+
+[[package]]
+name = "disjoint-sets"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ccbbca7d6a247007ca2535c616d4bb4a5fcad176ef0218671f96b88c52c3d34"
 
 [[package]]
 name = "dispatch"
@@ -2983,16 +2983,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "partitions"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9249745fe5a60e2ebd69cc649af1baf28fa3f4606b24146490124405401510d8"
-dependencies = [
- "bit-vec 0.5.1",
- "rayon",
-]
-
-[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3622,11 +3612,12 @@ dependencies = [
 name = "shadex-computation-definitions"
 version = "0.1.0"
 dependencies = [
+ "archery",
  "bytemuck",
+ "disjoint-sets",
  "image",
  "nom",
  "nom_locate",
- "partitions",
  "rayon",
  "rpds",
  "wgpu",
@@ -4443,7 +4434,7 @@ checksum = "27a75de515543b1897b26119f93731b385a19aea165a1ec5f0e3acecc229cae7"
 dependencies = [
  "arrayvec",
  "bit-set",
- "bit-vec 0.8.0",
+ "bit-vec",
  "bitflags 2.10.0",
  "bytemuck",
  "cfg_aliases",

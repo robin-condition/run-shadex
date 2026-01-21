@@ -14,5 +14,5 @@ DEF entry: () => {
             //ddiffsqr
         }
     };
-    core::tex(w: 200u32, h: 100u32, d: 3u32, v: color_func)
+    core::tex(w: 1920u32, h: 1080u32, d: 3u32, v: color_func)
 }
