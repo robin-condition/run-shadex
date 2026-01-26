@@ -3,7 +3,7 @@ use std::{collections::HashSet, fmt::Display};
 use crate::nodedef::{
     ast::{
         ArithmeticOp, BoolValuedOp, LambdaExpression, LiteralExpressionNumber, MathOp,
-        full_untyped::UntypedBody,
+        full_maybetyped::MaybetypedBody, typing::Type,
     },
     ir::{
         CaptureId, Instruction, OpCode, ParamInfo, TypeAnnotation, ValueRefType,
@@ -16,16 +16,16 @@ use crate::nodedef::{
 
 pub mod opt;
 
-pub type UntypedLLambdaType = ();
+pub type MaybetypedLLambdaType = Option<Type>;
 
-impl TypeAnnotation for UntypedLLambdaType {}
+impl TypeAnnotation for MaybetypedLLambdaType {}
 
-pub type UntypedLLambdaParamInfo = ();
-impl ParamInfo for UntypedLLambdaParamInfo {}
+pub type MaybetypedLLambdaParamInfo = MaybetypedLLambdaType;
+impl ParamInfo for MaybetypedLLambdaParamInfo {}
 
 #[derive(Debug, Clone)]
-pub struct UntypedLLambdaOpCode(
-    pub LLambdaOpCode<LambdaValueRef, UntypedLLambdaParamInfo, Self, UntypedLLambdaType>,
+pub struct MaybetypedLLambdaOpCode(
+    pub LLambdaOpCode<LambdaValueRef, MaybetypedLLambdaParamInfo, Self, MaybetypedLLambdaType>,
 );
 
 pub mod interpreter;
@@ -34,68 +34,77 @@ impl
     From<
         LLambdaOpCode<
             LambdaValueRef,
-            UntypedLLambdaParamInfo,
-            UntypedLLambdaOpCode,
-            UntypedLLambdaType,
+            MaybetypedLLambdaParamInfo,
+            MaybetypedLLambdaOpCode,
+            MaybetypedLLambdaType,
         >,
-    > for UntypedLLambdaOpCode
+    > for MaybetypedLLambdaOpCode
 {
     fn from(
         value: LLambdaOpCode<
             LambdaValueRef,
-            UntypedLLambdaParamInfo,
-            UntypedLLambdaOpCode,
-            UntypedLLambdaType,
+            MaybetypedLLambdaParamInfo,
+            MaybetypedLLambdaOpCode,
+            MaybetypedLLambdaType,
         >,
     ) -> Self {
         Self(value)
     }
 }
 
-impl OpCode<LambdaValueRef> for UntypedLLambdaOpCode {}
+impl OpCode<LambdaValueRef> for MaybetypedLLambdaOpCode {}
 
-pub type UntypedLLambdaInstr =
-    Instruction<LambdaValueRef, UntypedLLambdaOpCode, UntypedLLambdaType>;
+pub type MaybetypedLLambdaInstr =
+    Instruction<LambdaValueRef, MaybetypedLLambdaOpCode, MaybetypedLLambdaType>;
 
-pub type UntypedLLambdaFDef =
-    FnDef<LambdaValueRef, UntypedLLambdaParamInfo, UntypedLLambdaOpCode, UntypedLLambdaType>;
+pub type MaybetypedLLambdaFDef = FnDef<
+    LambdaValueRef,
+    MaybetypedLLambdaParamInfo,
+    MaybetypedLLambdaOpCode,
+    MaybetypedLLambdaType,
+>;
 
 impl ValueRefType for LambdaValueRef {}
 
-pub type UntypedLLambdaFBody = FnBody<LambdaValueRef, UntypedLLambdaOpCode, UntypedLLambdaType>;
+pub type MaybetypedLLambdaFBody =
+    FnBody<LambdaValueRef, MaybetypedLLambdaOpCode, MaybetypedLLambdaType>;
 
-pub type UntypedLLambdaLambdaDef =
-    LambdaDef<LambdaValueRef, UntypedLLambdaParamInfo, UntypedLLambdaOpCode, UntypedLLambdaType>;
+pub type MaybetypedLLambdaLambdaDef = LambdaDef<
+    LambdaValueRef,
+    MaybetypedLLambdaParamInfo,
+    MaybetypedLLambdaOpCode,
+    MaybetypedLLambdaType,
+>;
 
 impl
     From<
         LFunOpCode<
             LambdaValueRef,
-            UntypedLLambdaParamInfo,
-            UntypedLLambdaOpCode,
-            UntypedLLambdaType,
+            MaybetypedLLambdaParamInfo,
+            MaybetypedLLambdaOpCode,
+            MaybetypedLLambdaType,
         >,
-    > for UntypedLLambdaOpCode
+    > for MaybetypedLLambdaOpCode
 {
     fn from(
         value: LFunOpCode<
             LambdaValueRef,
-            UntypedLLambdaParamInfo,
-            UntypedLLambdaOpCode,
-            UntypedLLambdaType,
+            MaybetypedLLambdaParamInfo,
+            MaybetypedLLambdaOpCode,
+            MaybetypedLLambdaType,
         >,
     ) -> Self {
         Self(LLambdaOpCode::Fn(value))
     }
 }
 
-impl From<LStructOpCode<LambdaValueRef>> for UntypedLLambdaOpCode {
+impl From<LStructOpCode<LambdaValueRef>> for MaybetypedLLambdaOpCode {
     fn from(value: LStructOpCode<LambdaValueRef>) -> Self {
         Self(LLambdaOpCode::Fn(LFunOpCode::Struct(value)))
     }
 }
 
-impl From<LDumbOpCode<LambdaValueRef>> for UntypedLLambdaOpCode {
+impl From<LDumbOpCode<LambdaValueRef>> for MaybetypedLLambdaOpCode {
     fn from(value: LDumbOpCode<LambdaValueRef>) -> Self {
         Self(LLambdaOpCode::Fn(LFunOpCode::Struct(LStructOpCode::Dumb(
             value,
@@ -164,7 +173,14 @@ impl Display for LStructOpCode<LambdaValueRef> {
     }
 }
 
-impl FnDef<LambdaValueRef, UntypedLLambdaParamInfo, UntypedLLambdaOpCode, UntypedLLambdaType> {
+impl
+    FnDef<
+        LambdaValueRef,
+        MaybetypedLLambdaParamInfo,
+        MaybetypedLLambdaOpCode,
+        MaybetypedLLambdaType,
+    >
+{
     fn fmt_with_prefix(
         &self,
         line_prefix: &str,
@@ -172,7 +188,11 @@ impl FnDef<LambdaValueRef, UntypedLLambdaParamInfo, UntypedLLambdaOpCode, Untype
     ) -> std::fmt::Result {
         write!(f, "(")?;
         for a in &self.params.params_names {
-            write!(f, "{}: {}, ", a.0, a.1)?;
+            let typ_inf = self.params.param_infos.get(a.1).unwrap();
+            match typ_inf {
+                Some(t) => write!(f, "{}/{}: {}, ", a.0, a.1, t)?,
+                None => write!(f, "{}/{}, ", a.0, a.1)?,
+            }
         }
         writeln!(f, ") => {{")?;
         self.body
@@ -183,7 +203,14 @@ impl FnDef<LambdaValueRef, UntypedLLambdaParamInfo, UntypedLLambdaOpCode, Untype
 }
 
 // Display for
-impl LFunOpCode<LambdaValueRef, UntypedLLambdaParamInfo, UntypedLLambdaOpCode, UntypedLLambdaType> {
+impl
+    LFunOpCode<
+        LambdaValueRef,
+        MaybetypedLLambdaParamInfo,
+        MaybetypedLLambdaOpCode,
+        MaybetypedLLambdaType,
+    >
+{
     fn fmt_with_prefix(
         &self,
         line_prefix: &str,
@@ -204,15 +231,19 @@ impl LFunOpCode<LambdaValueRef, UntypedLLambdaParamInfo, UntypedLLambdaOpCode, U
     }
 }
 
-impl FnBody<LambdaValueRef, UntypedLLambdaOpCode, UntypedLLambdaType> {
+impl FnBody<LambdaValueRef, MaybetypedLLambdaOpCode, MaybetypedLLambdaType> {
     pub fn fmt_with_prefix(
         &self,
         prefix: &str,
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         for l in self {
-            write!(f, "{}{} = ", prefix, l.0)?;
-            l.1.fmt_with_prefix(prefix, f)?;
+            let typ = &l.1.typ;
+            match typ {
+                Some(t) => write!(f, "{}{}: {} = ", prefix, l.0, t)?,
+                None => write!(f, "{}{}: Unknown = ", prefix, l.0)?,
+            }
+            l.1.op.fmt_with_prefix(prefix, f)?;
             writeln!(f)?;
         }
         if let Some(r) = &self.returned {
@@ -222,7 +253,7 @@ impl FnBody<LambdaValueRef, UntypedLLambdaOpCode, UntypedLLambdaType> {
     }
 }
 
-impl UntypedLLambdaOpCode {
+impl MaybetypedLLambdaOpCode {
     fn fmt_with_prefix(
         &self,
         line_prefix: &str,
@@ -242,11 +273,11 @@ impl UntypedLLambdaOpCode {
     }
 }
 
-impl UntypedLLambdaFBody {
+impl MaybetypedLLambdaFBody {
     fn report_used_captures(&self) -> HashSet<CaptureId> {
         let mut set = HashSet::new();
         for s in self {
-            match &s.1.0 {
+            match &s.1.op.0 {
                 LLambdaOpCode::Fn(LFunOpCode::GlobalFn(_)) => {}
                 LLambdaOpCode::Fn(LFunOpCode::FnCtor(_)) => {}
                 LLambdaOpCode::Fn(LFunOpCode::CallFn(c, args)) => {
@@ -311,7 +342,7 @@ impl UntypedLLambdaFBody {
     }
 }
 
-impl UntypedLLambdaOpCode {
+impl MaybetypedLLambdaOpCode {
     pub fn remove_unnecessary_captures_here(&mut self) {
         match &mut self.0 {
             LLambdaOpCode::ConstructLambda(l) => {
@@ -336,7 +367,7 @@ impl UntypedLLambdaOpCode {
     }
 }
 
-impl UntypedLLambdaFBody {
+impl MaybetypedLLambdaFBody {
     pub fn remove_unnecessary_captures_in_children(&mut self) {
         let ids: Vec<_> = self.into_iter().map(|(a, _)| a).collect();
         for id in ids {
@@ -349,7 +380,7 @@ impl UntypedLLambdaFBody {
     }
 }
 
-impl Display for UntypedLLambdaFBody {
+impl Display for MaybetypedLLambdaFBody {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.fmt_with_prefix("", f)
     }

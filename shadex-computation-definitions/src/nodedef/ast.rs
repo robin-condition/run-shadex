@@ -1,8 +1,9 @@
 use std::{collections::HashMap, fmt::Debug};
-pub mod full_untyped;
-pub mod identifiers_linked;
+pub mod full_maybetyped;
 
 pub mod mathy_ast;
+
+pub mod typing;
 
 pub trait ExpressionType: Debug {}
 

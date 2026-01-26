@@ -1,6 +1,6 @@
-use crate::nodedef::ir::untyped_llambda::{UntypedLLambdaFBody, UntypedLLambdaOpCode};
+use crate::nodedef::ir::maybetyped_llambda::{MaybetypedLLambdaFBody, MaybetypedLLambdaOpCode};
 
-impl UntypedLLambdaFBody {
+impl MaybetypedLLambdaFBody {
     pub fn hoist_exprs_of_captured_variables(&mut self) {
         todo!()
     }

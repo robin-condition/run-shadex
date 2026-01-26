@@ -10,7 +10,7 @@ pub mod lfun;
 pub mod llambda;
 pub mod lstruct;
 
-pub mod untyped_llambda;
+pub mod maybetyped_llambda;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct InstrId(usize);

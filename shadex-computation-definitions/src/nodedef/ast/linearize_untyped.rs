@@ -5,9 +5,10 @@ use rpds::HashTrieMap;
 use crate::nodedef::{
     ast::{
         AssignmentStatement, FourArithmeticExpression, LambdaExpression,
-        full_untyped::{
-            GlobalUntypedExprDefs, ScopedIdentifier, UntypedBody, UntypedExpression,
-            UntypedStatement,
+        full_maybetyped::{
+            GlobalMaybetypedExprDefs, MaybetypedBody, MaybetypedExpression,
+            MaybetypedExpressionShape, MaybetypedLambdaExpressionShape, MaybetypedStatement,
+            ScopedIdentifier,
         },
         mathy_ast::ArithmeticOrLiteralOrId,
     },
@@ -17,15 +18,17 @@ use crate::nodedef::{
         lfun::{FnBody, FnValueRef, LFunOpCode, ParamSupplier},
         llambda::{CapturesInfo, LLambdaOpCode, LambdaDef, LambdaValueRef},
         lstruct::{LStructOpCode, StructCtor},
-        untyped_llambda::{UntypedLLambdaFBody, UntypedLLambdaFDef, UntypedLLambdaOpCode},
+        maybetyped_llambda::{
+            MaybetypedLLambdaFBody, MaybetypedLLambdaFDef, MaybetypedLLambdaOpCode,
+        },
     },
 };
 
-impl LambdaExpression<Vec<String>, UntypedBody, ()> {
+impl MaybetypedLambdaExpressionShape {
     fn create_body_after_args(
         &self,
         cap_and_args_ctx: &HashTrieMap<String, LambdaValueRef>,
-    ) -> UntypedLLambdaFBody {
+    ) -> MaybetypedLLambdaFBody {
         let mut val_ctx = cap_and_args_ctx.clone();
         let mut body = FnBody::new();
         for stmt in &self.body.stmts {
@@ -41,29 +44,29 @@ impl LambdaExpression<Vec<String>, UntypedBody, ()> {
     pub fn create_fn_def(
         &self,
         cap_ctx: &HashTrieMap<String, LambdaValueRef>,
-    ) -> UntypedLLambdaFDef {
+    ) -> MaybetypedLLambdaFDef {
         let mut param_supplier = ParamSupplier::new();
         let mut ctx = cap_ctx.clone();
         for n in &self.args {
-            let id = param_supplier.add_param(n.clone(), ());
-            ctx = ctx.insert(n.clone(), LambdaValueRef::FnValueRef(FnValueRef::Arg(id)));
+            let id = param_supplier.add_param(n.0.clone(), n.1.clone());
+            ctx = ctx.insert(n.0.clone(), LambdaValueRef::FnValueRef(FnValueRef::Arg(id)));
         }
         let bd = self.create_body_after_args(&ctx);
-        UntypedLLambdaFDef {
+        MaybetypedLLambdaFDef {
             body: bd,
             params: param_supplier,
         }
     }
 }
 
-impl UntypedExpression {
+impl MaybetypedExpression {
     pub fn emit(
         &self,
         ctx: &mut HashTrieMap<String, LambdaValueRef>,
-        body: &mut UntypedLLambdaFBody,
+        body: &mut MaybetypedLLambdaFBody,
     ) -> InstrId {
-        match self {
-            UntypedExpression::Arithmetic(a) => match a {
+        match &self.shape {
+            MaybetypedExpressionShape::Arithmetic(a) => match a {
                 ArithmeticOrLiteralOrId::Arithmetic(e) => {
                     let lhs = e.left.emit(ctx, body);
                     let rhs = e.right.emit(ctx, body);
@@ -74,22 +77,22 @@ impl UntypedExpression {
                             right: LambdaValueRef::FnValueRef(FnValueRef::InstrId(rhs)),
                         })
                         .into(),
-                        (),
+                        None,
                     )
                 }
                 ArithmeticOrLiteralOrId::Literal(l) => {
-                    body.append_instr(LDumbOpCode::ConstantNum(*l).into(), ())
+                    body.append_instr(LDumbOpCode::ConstantNum(*l).into(), None)
                 }
                 ArithmeticOrLiteralOrId::Id(name) => match name {
                     ScopedIdentifier::InScope(_scope, n) => {
-                        body.append_instr(LFunOpCode::GlobalFn(n.clone()).into(), ())
+                        body.append_instr(LFunOpCode::GlobalFn(n.clone()).into(), None)
                     }
                     ScopedIdentifier::Scopeless(n) => {
-                        body.append_instr(LDumbOpCode::Copy(*ctx.get(n).unwrap()).into(), ())
+                        body.append_instr(LDumbOpCode::Copy(*ctx.get(n).unwrap()).into(), None)
                     }
                 },
             },
-            UntypedExpression::Lambda(e) => {
+            MaybetypedExpressionShape::Lambda(e) => {
                 let mut captured_ctx = HashTrieMap::new();
                 let mut capture_inf = CapturesInfo::new();
 
@@ -107,10 +110,10 @@ impl UntypedExpression {
                         captures_info: capture_inf,
                     })
                     .into(),
-                    (),
+                    None,
                 )
             }
-            UntypedExpression::MemberAccess(e) => {
+            MaybetypedExpressionShape::MemberAccess(e) => {
                 let owner = e.owner.emit(ctx, body);
                 body.append_instr(
                     LStructOpCode::MemberAccess(
@@ -118,10 +121,10 @@ impl UntypedExpression {
                         FieldId(e.name.clone()),
                     )
                     .into(),
-                    (),
+                    None,
                 )
             }
-            UntypedExpression::StructConstructor(e) => {
+            MaybetypedExpressionShape::StructConstructor(e) => {
                 let flds: HashMap<_, _> = e
                     .fields
                     .iter()
@@ -134,10 +137,10 @@ impl UntypedExpression {
                     .collect();
                 body.append_instr(
                     LStructOpCode::ConstructStruct(StructCtor::from_map(&flds)).into(),
-                    (),
+                    None,
                 )
             }
-            UntypedExpression::Call(e) => {
+            MaybetypedExpressionShape::Call(e) => {
                 let fn_ref = e.fn_expr.emit(ctx, body);
                 let mut arg_vals = HashMap::new();
                 for (n, v) in &e.args {
@@ -152,23 +155,23 @@ impl UntypedExpression {
                         arg_vals,
                     )
                     .into(),
-                    (),
+                    None,
                 )
             }
 
-            UntypedExpression::AnnotatedExpression(annotated_expression) => todo!(),
+            MaybetypedExpressionShape::AnnotatedExpression(annotated_expression) => todo!(),
         }
     }
 }
 
-impl UntypedStatement {
+impl MaybetypedStatement {
     pub fn emit(
         &self,
         ctx: &mut HashTrieMap<String, LambdaValueRef>,
-        body: &mut UntypedLLambdaFBody,
+        body: &mut MaybetypedLLambdaFBody,
     ) {
         match self {
-            UntypedStatement::DeclAssignment(s) => {
+            MaybetypedStatement::DeclAssignment(s) => {
                 let id = s.id.clone();
                 let res = s.rhs.emit(ctx, body);
 
@@ -178,9 +181,9 @@ impl UntypedStatement {
     }
 }
 
-impl GlobalUntypedExprDefs {
-    pub fn emit(&self) -> (HashTrieMap<String, LambdaValueRef>, UntypedLLambdaFBody) {
-        let mut body = UntypedLLambdaFBody::new();
+impl GlobalMaybetypedExprDefs {
+    pub fn emit(&self) -> (HashTrieMap<String, LambdaValueRef>, MaybetypedLLambdaFBody) {
+        let mut body = MaybetypedLLambdaFBody::new();
         let mut ctx = HashTrieMap::new();
         for n in &self.names {
             let id = self.map.get(n).unwrap().emit(&mut ctx, &mut body);

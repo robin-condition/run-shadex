@@ -21,10 +21,12 @@ use crate::nodedef::ast::{
     AnnotatedExpression, ArithmeticOp, AssignmentStatement, BoolValuedOp, CallExpression,
     FourArithmeticExpression, LambdaExpression, LiteralExpression, LiteralExpressionNumber, MathOp,
     MemberExpression, StructExpression,
-    full_untyped::{
-        GlobalUntypedExprDefs, ScopedIdentifier, UntypedBody, UntypedExpression, UntypedStatement,
+    full_maybetyped::{
+        GlobalMaybetypedExprDefs, MaybetypedBody, MaybetypedExpression, MaybetypedExpressionShape,
+        MaybetypedStatement, ScopedIdentifier,
     },
     mathy_ast::ArithmeticOrLiteralOrId,
+    typing::Type,
 };
 
 fn space_or_comment<'a, E: ParseError<InputSpan<'a>>>()
@@ -89,13 +91,13 @@ fn parse_f32<'a>() -> impl Parser<InputSpan<'a>, Output = f32, Error = MyError<'
 }
 
 /*fn parse_assignment<'a>()
--> impl Parser<InputSpan<'a>, Output = UntypedStatement, Error = MyError<'a>> {
+-> impl Parser<InputSpan<'a>, Output = MaybetypedStatement, Error = MyError<'a>> {
     terminated(
         separated_pair(ws(parse_identifier()), ws(tag("=")), parse_expr()),
         ws(tag(";")),
     )
     .map(|(name, expr)| {
-        UntypedStatement::Assignment(AssignmentStatement {
+        MaybetypedStatement::Assignment(AssignmentStatement {
             id: name,
             rhs: expr,
         })
@@ -103,56 +105,68 @@ fn parse_f32<'a>() -> impl Parser<InputSpan<'a>, Output = f32, Error = MyError<'
 }*/
 
 fn parse_decl_assign<'a>()
--> impl Parser<InputSpan<'a>, Output = UntypedStatement, Error = MyError<'a>> {
+-> impl Parser<InputSpan<'a>, Output = MaybetypedStatement, Error = MyError<'a>> {
     delimited(
         ws(tag("let")),
         separated_pair(ws(parse_identifier()), ws(tag("=")), parse_expr()),
         ws(tag(";")),
     )
     .map(|(name, expr)| {
-        UntypedStatement::DeclAssignment(AssignmentStatement {
+        MaybetypedStatement::DeclAssignment(AssignmentStatement {
             id: name,
             rhs: expr,
         })
     })
 }
 
-fn parse_stmt<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedStatement, Error = MyError<'a>> {
+fn parse_stmt<'a>() -> impl Parser<InputSpan<'a>, Output = MaybetypedStatement, Error = MyError<'a>>
+{
     //alt((parse_assignment(), parse_decl_assign()))
     parse_decl_assign()
 }
 
-fn parse_body<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedBody, Error = MyError<'a>> {
+fn parse_body<'a>() -> impl Parser<InputSpan<'a>, Output = MaybetypedBody, Error = MyError<'a>> {
     delimited(
         ws(tag("{")),
         (many0(parse_stmt()), ws(opt(parse_expr()))),
         ws(tag("}")),
     )
-    .map(|g| UntypedBody {
+    .map(|g| MaybetypedBody {
         stmts: g.0,
         end_expr: g.1.map(Box::new),
     })
 }
 
+fn parse_type_literal<'a>() -> impl Parser<InputSpan<'a>, Output = Type, Error = MyError<'a>> {
+    ws(alt((
+        tag("f32").map(|_| Type::F32),
+        tag("u32").map(|_| Type::U32),
+    )))
+}
+
 fn parse_lambda_decl<'a>()
--> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
-    let parse_arg = parse_identifier();
+-> impl Parser<InputSpan<'a>, Output = MaybetypedExpression, Error = MyError<'a>> {
+    let parse_arg = (
+        parse_identifier(),
+        opt(preceded(ws(tag(":")), parse_type_literal())),
+    );
     let parse_args = delimited(
         ws(tag("(")),
         separated_list0(ws(tag(",")), parse_arg),
         ws(tag(")")),
     );
-    separated_pair(parse_args, ws(tag("=>")), parse_body()).map(|(a, b)| {
-        UntypedExpression::Lambda(LambdaExpression {
+    separated_pair(parse_args, ws(tag("=>")), parse_body()).map(|(a, b)| MaybetypedExpression {
+        shape: MaybetypedExpressionShape::Lambda(LambdaExpression {
             args: a,
             body: b,
-            caps: (),
-        })
+            caps: None,
+        }),
+        typ: None,
     })
 }
 
 fn parse_struct_ctor<'a>()
--> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
+-> impl Parser<InputSpan<'a>, Output = MaybetypedExpression, Error = MyError<'a>> {
     delimited(
         ws(tag("(")),
         separated_list1(
@@ -161,7 +175,10 @@ fn parse_struct_ctor<'a>()
         ),
         ws(tag(")")),
     )
-    .map(|flds| UntypedExpression::StructConstructor(StructExpression { fields: flds }))
+    .map(|flds| MaybetypedExpression {
+        shape: MaybetypedExpressionShape::StructConstructor(StructExpression { fields: flds }),
+        typ: None,
+    })
 }
 
 pub fn parse_expr() -> ExprParser {
@@ -179,7 +196,8 @@ fn parse_scoped_ident<'a>()
     })
 }
 
-fn parse_atom<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
+fn parse_atom<'a>() -> impl Parser<InputSpan<'a>, Output = MaybetypedExpression, Error = MyError<'a>>
+{
     alt((
         terminated(parse_f32(), tag("f32"))
             .map(|f| {
@@ -187,24 +205,28 @@ fn parse_atom<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Er
                     LiteralExpression { v: f },
                 ))
             })
-            .map(UntypedExpression::Arithmetic),
+            .map(MaybetypedExpressionShape::Arithmetic)
+            .map(MaybetypedExpression::typeless),
         terminated(parse_u32(), tag("u32"))
             .map(|v| {
                 ArithmeticOrLiteralOrId::Literal(LiteralExpressionNumber::LiteralU32(
                     LiteralExpression { v },
                 ))
             })
-            .map(UntypedExpression::Arithmetic),
+            .map(MaybetypedExpressionShape::Arithmetic)
+            .map(MaybetypedExpression::typeless),
         parse_i32()
             .map(|v| {
                 ArithmeticOrLiteralOrId::Literal(LiteralExpressionNumber::LiteralI32(
                     LiteralExpression { v },
                 ))
             })
-            .map(UntypedExpression::Arithmetic),
+            .map(MaybetypedExpressionShape::Arithmetic)
+            .map(MaybetypedExpression::typeless),
         parse_scoped_ident()
             .map(ArithmeticOrLiteralOrId::Id)
-            .map(UntypedExpression::Arithmetic),
+            .map(MaybetypedExpressionShape::Arithmetic)
+            .map(MaybetypedExpression::typeless),
         parse_lambda_decl(),
         delimited(ws(tag("(")), parse_expr(), ws(tag(")"))),
         parse_struct_ctor(),
@@ -213,7 +235,7 @@ fn parse_atom<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Er
 
 enum FactorSuffix {
     MemberAccess(String),
-    FnCall(Vec<(String, UntypedExpression)>),
+    FnCall(Vec<(String, MaybetypedExpression)>),
     Annotation(Vec<String>),
 }
 
@@ -232,7 +254,7 @@ fn parse_annotation_suffix<'a>()
 }
 
 fn parse_fn_call_suffix<'a>()
--> impl Parser<InputSpan<'a>, Output = Vec<(String, UntypedExpression)>, Error = MyError<'a>> {
+-> impl Parser<InputSpan<'a>, Output = Vec<(String, MaybetypedExpression)>, Error = MyError<'a>> {
     delimited(
         ws(tag("(")),
         separated_list0(
@@ -244,7 +266,7 @@ fn parse_fn_call_suffix<'a>()
 }
 
 fn parse_atom_with_suffices<'a>()
--> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
+-> impl Parser<InputSpan<'a>, Output = MaybetypedExpression, Error = MyError<'a>> {
     (
         parse_atom(),
         many0(alt((
@@ -257,35 +279,37 @@ fn parse_atom_with_suffices<'a>()
             let mut res = a;
             for sf in sfx {
                 res = match sf {
-                    FactorSuffix::MemberAccess(name) => {
-                        UntypedExpression::MemberAccess(MemberExpression {
+                    FactorSuffix::MemberAccess(name) => MaybetypedExpression::typeless(
+                        MaybetypedExpressionShape::MemberAccess(MemberExpression {
                             owner: Box::new(res),
                             name,
-                        })
-                    }
-                    FactorSuffix::FnCall(items) => UntypedExpression::Call(CallExpression {
-                        fn_expr: Box::new(res),
-                        args: items,
-                    }),
-                    FactorSuffix::Annotation(annotations) => {
-                        UntypedExpression::AnnotatedExpression(AnnotatedExpression {
+                        }),
+                    ),
+                    FactorSuffix::FnCall(items) => MaybetypedExpression::typeless(
+                        MaybetypedExpressionShape::Call(CallExpression {
+                            fn_expr: Box::new(res),
+                            args: items,
+                        }),
+                    ),
+                    FactorSuffix::Annotation(annotations) => MaybetypedExpression::typeless(
+                        MaybetypedExpressionShape::AnnotatedExpression(AnnotatedExpression {
                             src: Box::new(res),
                             annotations,
-                        })
-                    }
+                        }),
+                    ),
                 };
             }
             res
         })
 }
 
-fn parse_factor<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>>
-{
+fn parse_factor<'a>()
+-> impl Parser<InputSpan<'a>, Output = MaybetypedExpression, Error = MyError<'a>> {
     parse_atom_with_suffices()
 }
 
 pub fn parse_term<'a>()
--> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
+-> impl Parser<InputSpan<'a>, Output = MaybetypedExpression, Error = MyError<'a>> {
     (
         parse_factor(),
         many0((
@@ -299,20 +323,20 @@ pub fn parse_term<'a>()
         .map(|(strt, ops)| {
             let mut res = strt;
             for op in ops {
-                res = UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Arithmetic(
-                    FourArithmeticExpression {
+                res = MaybetypedExpression::typeless(MaybetypedExpressionShape::Arithmetic(
+                    ArithmeticOrLiteralOrId::Arithmetic(FourArithmeticExpression {
                         op: op.0,
                         left: Box::new(res),
                         right: Box::new(op.1),
-                    },
+                    }),
                 ));
             }
             res
         })
 }
 
-pub fn parse_sum<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>>
-{
+pub fn parse_sum<'a>()
+-> impl Parser<InputSpan<'a>, Output = MaybetypedExpression, Error = MyError<'a>> {
     (
         parse_term(),
         many0((
@@ -326,12 +350,12 @@ pub fn parse_sum<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression,
         .map(|(strt, ops)| {
             let mut res = strt;
             for op in ops {
-                res = UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Arithmetic(
-                    FourArithmeticExpression {
+                res = MaybetypedExpression::typeless(MaybetypedExpressionShape::Arithmetic(
+                    ArithmeticOrLiteralOrId::Arithmetic(FourArithmeticExpression {
                         op: op.0,
                         left: Box::new(res),
                         right: Box::new(op.1),
-                    },
+                    }),
                 ));
             }
             res
@@ -339,7 +363,7 @@ pub fn parse_sum<'a>() -> impl Parser<InputSpan<'a>, Output = UntypedExpression,
 }
 
 pub fn parse_comparator_level<'a>()
--> impl Parser<InputSpan<'a>, Output = UntypedExpression, Error = MyError<'a>> {
+-> impl Parser<InputSpan<'a>, Output = MaybetypedExpression, Error = MyError<'a>> {
     (
         parse_sum(),
         opt((
@@ -354,12 +378,12 @@ pub fn parse_comparator_level<'a>()
         .map(|(strt, ops)| {
             let mut res = strt;
             if let Some(op) = ops {
-                res = UntypedExpression::Arithmetic(ArithmeticOrLiteralOrId::Arithmetic(
-                    FourArithmeticExpression {
+                res = MaybetypedExpression::typeless(MaybetypedExpressionShape::Arithmetic(
+                    ArithmeticOrLiteralOrId::Arithmetic(FourArithmeticExpression {
                         op: op.0,
                         left: Box::new(res),
                         right: Box::new(op.1),
-                    },
+                    }),
                 ));
             }
             res
@@ -369,7 +393,7 @@ pub fn parse_comparator_level<'a>()
 pub struct ExprParser;
 
 impl<'a> Parser<InputSpan<'a>> for ExprParser {
-    type Output = UntypedExpression;
+    type Output = MaybetypedExpression;
 
     type Error = MyError<'a>;
 
@@ -384,13 +408,13 @@ impl<'a> Parser<InputSpan<'a>> for ExprParser {
 impl ExprParser {
     pub fn whole_file<'a>(
         self,
-    ) -> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = UntypedExpression> {
+    ) -> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = MaybetypedExpression> {
         all_consuming(self)
     }
 }
 
 fn parse_global_def<'a>()
--> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = (String, UntypedExpression)> {
+-> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = (String, MaybetypedExpression)> {
     preceded(
         ws(tag("DEF")),
         separated_pair(parse_identifier(), ws(tag(":")), parse_expr()),
@@ -398,10 +422,10 @@ fn parse_global_def<'a>()
 }
 
 fn parse_global_def_file<'a>()
--> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = GlobalUntypedExprDefs> {
+-> impl Parser<InputSpan<'a>, Error = MyError<'a>, Output = GlobalMaybetypedExprDefs> {
     all_consuming(many0(parse_global_def()).map(|v| {
         let name_vec = v.iter().map(|a| a.0.clone()).collect();
-        GlobalUntypedExprDefs {
+        GlobalMaybetypedExprDefs {
             map: v.into_iter().collect(),
             names: name_vec,
         }
@@ -410,6 +434,6 @@ fn parse_global_def_file<'a>()
 
 pub fn parse_global_def_file_specific<'a>(
     inp: InputSpan<'a>,
-) -> Result<GlobalUntypedExprDefs, nom::Err<MyError<'a>>> {
+) -> Result<GlobalMaybetypedExprDefs, nom::Err<MyError<'a>>> {
     parse_global_def_file().parse_complete(inp).map(|f| f.1)
 }

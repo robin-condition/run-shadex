@@ -4,17 +4,12 @@ use image::Rgb;
 use nom::Parser;
 use rpds::HashTrieMap;
 use shadex_computation_definitions::nodedef::{
-    ast::identifiers_linked,
     ir::{
         lfun::FnValueRef,
         llambda::LambdaValueRef,
-        untyped_llambda::{
-            UntypedLLambdaOpCode,
-            interpreter::{Interpreter, LambdaValue, Value},
-        },
+        maybetyped_llambda::interpreter::{Interpreter, Value},
     },
     parsing::{parse_expr, parse_global_def_file_specific, parse_term},
-    semantic_analysis::free_variables,
 };
 
 fn main() {
@@ -34,6 +29,7 @@ fn main() {
     };
 
     let lambda_ctor = emitted.1.instrs.get(&instr_id).unwrap();
+    println!("{}", emitted.1);
     let lambda = interp.interpret(match &lambda_ctor.op.0 {
         shadex_computation_definitions::nodedef::ir::llambda::LLambdaOpCode::ConstructLambda(lambda_def) => &lambda_def.fn_def.body,
         _ => panic!()

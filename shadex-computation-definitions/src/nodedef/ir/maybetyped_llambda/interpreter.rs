@@ -12,9 +12,9 @@ use crate::nodedef::{
     ir::{
         CaptureId, FieldId, ParamId,
         llambda::{CapturesInfo, LambdaDef, LambdaValueRef},
-        untyped_llambda::{
-            UntypedLLambdaFBody, UntypedLLambdaInstr, UntypedLLambdaLambdaDef,
-            UntypedLLambdaOpCode,
+        maybetyped_llambda::{
+            MaybetypedLLambdaFBody, MaybetypedLLambdaInstr, MaybetypedLLambdaLambdaDef,
+            MaybetypedLLambdaOpCode,
             interpreter::execution_types::{ConstantBool, ConstantF32, ConstantI32, ConstantU8},
         },
     },
@@ -35,7 +35,7 @@ pub enum SpecificScalar {
 
 #[derive(Clone)]
 pub struct LambdaValue {
-    pub def: UntypedLLambdaLambdaDef,
+    pub def: MaybetypedLLambdaLambdaDef,
     pub captured_values: HashTrieMap<CaptureId, Value, archery::shared_pointer::kind::ArcTK>,
 }
 
@@ -237,7 +237,7 @@ impl Interpreter {
 
     fn interpret_instr(
         &self,
-        op: &UntypedLLambdaOpCode,
+        op: &MaybetypedLLambdaOpCode,
         ctx: &mut HashMap<LambdaValueRef, Value>,
     ) -> Value {
         match &op.0 {
@@ -391,7 +391,7 @@ impl Interpreter {
 
     pub fn interpret(
         &self,
-        bd: &UntypedLLambdaFBody,
+        bd: &MaybetypedLLambdaFBody,
         arg_ctx: &HashMap<ParamId, Value>,
         cap_ctx: &HashMap<CaptureId, Value>,
     ) -> Option<Value> {
@@ -408,7 +408,7 @@ impl Interpreter {
 
         // Now can actually interpret.
         for inst in bd {
-            let v = self.interpret_instr(inst.1, &mut val_body);
+            let v = self.interpret_instr(&inst.1.op, &mut val_body);
             val_body.insert(
                 LambdaValueRef::FnValueRef(crate::nodedef::ir::lfun::FnValueRef::InstrId(inst.0)),
                 v,

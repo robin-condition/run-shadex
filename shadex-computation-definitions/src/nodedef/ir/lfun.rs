@@ -128,7 +128,7 @@ pub struct FnBodyIter<'a, TArg: ValueRefType, Op: OpCode<TArg>, Typ: TypeAnnotat
 impl<'a, TArg: ValueRefType, Op: OpCode<TArg>, Typ: TypeAnnotation> Iterator
     for FnBodyIter<'a, TArg, Op, Typ>
 {
-    type Item = (InstrId, &'a Op);
+    type Item = (InstrId, &'a Instruction<TArg, Op, Typ>);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.next {
@@ -137,7 +137,7 @@ impl<'a, TArg: ValueRefType, Op: OpCode<TArg>, Typ: TypeAnnotation> Iterator
             }
             Next::Instr(instr_id) => {
                 let next_next = self.bd.prev_to_next(Prev::Instr(instr_id));
-                let op = &self.bd.instrs.get(&instr_id).unwrap().op;
+                let op = self.bd.instrs.get(&instr_id).unwrap();
                 self.next = next_next;
                 return Some((instr_id, op));
             }
@@ -148,7 +148,7 @@ impl<'a, TArg: ValueRefType, Op: OpCode<TArg>, Typ: TypeAnnotation> Iterator
 impl<'a, TArg: ValueRefType, Op: OpCode<TArg>, Typ: TypeAnnotation> IntoIterator
     for &'a FnBody<TArg, Op, Typ>
 {
-    type Item = (InstrId, &'a Op);
+    type Item = (InstrId, &'a Instruction<TArg, Op, Typ>);
 
     type IntoIter = FnBodyIter<'a, TArg, Op, Typ>;
 
