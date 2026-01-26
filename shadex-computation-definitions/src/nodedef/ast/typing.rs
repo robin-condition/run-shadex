@@ -42,7 +42,10 @@ impl Display for LambdaType {
 pub enum Type {
     U32,
     F32,
+    Bool,
     Lambda(LambdaType),
+    Unknown,
+    Unit,
 }
 
 impl Display for Type {
@@ -50,6 +53,9 @@ impl Display for Type {
         match self {
             Type::U32 => write!(f, "u32"),
             Type::F32 => write!(f, "f32"),
+            Type::Unknown => write!(f, "unknown"),
+            Type::Unit => write!(f, "unit"),
+            Type::Bool => write!(f, "bool"),
             Type::Lambda(lambda_type) => lambda_type.fmt(f),
         }
     }

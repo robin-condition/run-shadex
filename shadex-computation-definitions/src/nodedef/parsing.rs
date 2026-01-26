@@ -148,7 +148,7 @@ fn parse_lambda_decl<'a>()
 -> impl Parser<InputSpan<'a>, Output = MaybetypedExpression, Error = MyError<'a>> {
     let parse_arg = (
         parse_identifier(),
-        opt(preceded(ws(tag(":")), parse_type_literal())),
+        opt(preceded(ws(tag(":")), parse_type_literal())).map(|t| t.unwrap_or(Type::Unknown)),
     );
     let parse_args = delimited(
         ws(tag("(")),
@@ -161,7 +161,7 @@ fn parse_lambda_decl<'a>()
             body: b,
             caps: None,
         }),
-        typ: None,
+        typ: Type::Unknown,
     })
 }
 
@@ -175,9 +175,10 @@ fn parse_struct_ctor<'a>()
         ),
         ws(tag(")")),
     )
-    .map(|flds| MaybetypedExpression {
-        shape: MaybetypedExpressionShape::StructConstructor(StructExpression { fields: flds }),
-        typ: None,
+    .map(|flds| {
+        MaybetypedExpression::typeless(MaybetypedExpressionShape::StructConstructor(
+            StructExpression { fields: flds },
+        ))
     })
 }
 

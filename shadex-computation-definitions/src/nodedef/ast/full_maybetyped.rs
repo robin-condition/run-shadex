@@ -7,7 +7,7 @@ use crate::nodedef::ast::{
     StructExpression, mathy_ast::ArithmeticOrLiteralOrId, typing::Type,
 };
 
-impl ArgDefCollectionType for Vec<(String, Option<Type>)> {}
+impl ArgDefCollectionType for Vec<(String, Type)> {}
 
 #[derive(Debug)]
 pub struct BlockStatement {}
@@ -19,17 +19,20 @@ impl CapturesInfoType for Option<Vec<Type>> {}
 #[derive(Debug)]
 pub struct MaybetypedExpression {
     pub shape: MaybetypedExpressionShape,
-    pub typ: Option<Type>,
+    pub typ: Type,
 }
 
 impl MaybetypedExpression {
     pub fn typeless(shape: MaybetypedExpressionShape) -> Self {
-        Self { shape, typ: None }
+        Self {
+            shape,
+            typ: Type::Unknown,
+        }
     }
 }
 
 pub type MaybetypedLambdaExpressionShape =
-    LambdaExpression<Vec<(String, Option<Type>)>, MaybetypedBody, Option<Vec<Type>>>;
+    LambdaExpression<Vec<(String, Type)>, MaybetypedBody, Option<Vec<Type>>>;
 
 #[derive(Debug)]
 pub enum MaybetypedExpressionShape {

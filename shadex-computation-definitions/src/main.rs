@@ -28,8 +28,11 @@ fn main() {
         _ => panic!(),
     };
 
+    emitted.1.propagate_types(HashTrieMap::new());
     let lambda_ctor = emitted.1.instrs.get(&instr_id).unwrap();
     println!("{}", emitted.1);
+
+    return;
     let lambda = interp.interpret(match &lambda_ctor.op.0 {
         shadex_computation_definitions::nodedef::ir::llambda::LLambdaOpCode::ConstructLambda(lambda_def) => &lambda_def.fn_def.body,
         _ => panic!()

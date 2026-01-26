@@ -11,6 +11,7 @@ use crate::nodedef::{
             ScopedIdentifier,
         },
         mathy_ast::ArithmeticOrLiteralOrId,
+        typing::Type,
     },
     ir::{
         FieldId, InstrId,
@@ -77,19 +78,20 @@ impl MaybetypedExpression {
                             right: LambdaValueRef::FnValueRef(FnValueRef::InstrId(rhs)),
                         })
                         .into(),
-                        None,
+                        Type::Unknown,
                     )
                 }
                 ArithmeticOrLiteralOrId::Literal(l) => {
-                    body.append_instr(LDumbOpCode::ConstantNum(*l).into(), None)
+                    body.append_instr(LDumbOpCode::ConstantNum(*l).into(), Type::Unknown)
                 }
                 ArithmeticOrLiteralOrId::Id(name) => match name {
                     ScopedIdentifier::InScope(_scope, n) => {
-                        body.append_instr(LFunOpCode::GlobalFn(n.clone()).into(), None)
+                        body.append_instr(LFunOpCode::GlobalFn(n.clone()).into(), Type::Unknown)
                     }
-                    ScopedIdentifier::Scopeless(n) => {
-                        body.append_instr(LDumbOpCode::Copy(*ctx.get(n).unwrap()).into(), None)
-                    }
+                    ScopedIdentifier::Scopeless(n) => body.append_instr(
+                        LDumbOpCode::Copy(*ctx.get(n).unwrap()).into(),
+                        Type::Unknown,
+                    ),
                 },
             },
             MaybetypedExpressionShape::Lambda(e) => {
@@ -110,7 +112,7 @@ impl MaybetypedExpression {
                         captures_info: capture_inf,
                     })
                     .into(),
-                    None,
+                    Type::Unknown,
                 )
             }
             MaybetypedExpressionShape::MemberAccess(e) => {
@@ -121,7 +123,7 @@ impl MaybetypedExpression {
                         FieldId(e.name.clone()),
                     )
                     .into(),
-                    None,
+                    Type::Unknown,
                 )
             }
             MaybetypedExpressionShape::StructConstructor(e) => {
@@ -137,7 +139,7 @@ impl MaybetypedExpression {
                     .collect();
                 body.append_instr(
                     LStructOpCode::ConstructStruct(StructCtor::from_map(&flds)).into(),
-                    None,
+                    Type::Unknown,
                 )
             }
             MaybetypedExpressionShape::Call(e) => {
@@ -155,7 +157,7 @@ impl MaybetypedExpression {
                         arg_vals,
                     )
                     .into(),
-                    None,
+                    Type::Unknown,
                 )
             }
 

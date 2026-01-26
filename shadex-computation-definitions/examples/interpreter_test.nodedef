@@ -1,5 +1,5 @@
 DEF entry: () => {
-    let color_func = (x,y) => {
+    let color_func = (x: f32,y: f32) => {
 
         let total = x + y;
 
@@ -9,7 +9,7 @@ DEF entry: () => {
         let dist_diff = distsqr - 0.3f32 * 0.3f32;
         let ddiffsqr = 1.0f32 - dist_diff * dist_diff * 60f32;
 
-        (c) => {
+        (c: u32) => {
             core::sel(cond: c == 0u32, then: ddiffsqr, else: total)
             //ddiffsqr
         }

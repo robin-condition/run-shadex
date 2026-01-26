@@ -15,8 +15,9 @@ use crate::nodedef::{
 };
 
 pub mod opt;
+pub mod type_propagation;
 
-pub type MaybetypedLLambdaType = Option<Type>;
+pub type MaybetypedLLambdaType = Type;
 
 impl TypeAnnotation for MaybetypedLLambdaType {}
 
@@ -188,11 +189,8 @@ impl
     ) -> std::fmt::Result {
         write!(f, "(")?;
         for a in &self.params.params_names {
-            let typ_inf = self.params.param_infos.get(a.1).unwrap();
-            match typ_inf {
-                Some(t) => write!(f, "{}/{}: {}, ", a.0, a.1, t)?,
-                None => write!(f, "{}/{}, ", a.0, a.1)?,
-            }
+            let t = self.params.param_infos.get(a.1).unwrap();
+            write!(f, "{}/{}: {}, ", a.0, a.1, t)?;
         }
         writeln!(f, ") => {{")?;
         self.body
@@ -238,11 +236,8 @@ impl FnBody<LambdaValueRef, MaybetypedLLambdaOpCode, MaybetypedLLambdaType> {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         for l in self {
-            let typ = &l.1.typ;
-            match typ {
-                Some(t) => write!(f, "{}{}: {} = ", prefix, l.0, t)?,
-                None => write!(f, "{}{}: Unknown = ", prefix, l.0)?,
-            }
+            let t = &l.1.typ;
+            write!(f, "{}{}: {} = ", prefix, l.0, t)?;
             l.1.op.fmt_with_prefix(prefix, f)?;
             writeln!(f)?;
         }
