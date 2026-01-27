@@ -92,11 +92,41 @@ impl MaybetypedLLambdaOpCode {
                         ) => todo!(),
                     }
                 }
-                crate::nodedef::ir::lfun::LFunOpCode::FnCtor(fn_def) => todo!(),
-                crate::nodedef::ir::lfun::LFunOpCode::GlobalFn(_) => Type::Unknown, // This is todo. Needs parametric polymorphism to do it right
-                crate::nodedef::ir::lfun::LFunOpCode::CallFn(_, hash_map) => {
-                    // todo!()
-                    Type::Unknown
+                crate::nodedef::ir::lfun::LFunOpCode::FnCtor(fn_def) => {
+                    Type::Function(fn_def.propagate_types(ctx))
+                }
+                crate::nodedef::ir::lfun::LFunOpCode::GlobalFn(name) => match name.as_str() {
+                    "sel" => Type::Function(FunctionType(
+                        [
+                            ("cond".to_string(), Type::Bool),
+                            ("then".to_string(), Type::F32),
+                            ("else".to_string(), Type::F32),
+                        ]
+                        .into(),
+                        Box::new(Type::F32),
+                    )),
+                    "tex" => Type::Function(FunctionType(
+                        [
+                            ("w".to_string(), Type::U32),
+                            ("h".to_string(), Type::U32),
+                            ("d".to_string(), Type::U32),
+                            ("v".to_string(), Type::Unknown),
+                        ]
+                        .into(),
+                        Box::new(Type::Texture),
+                    )),
+                    _ => Type::Unknown,
+                }, // This is todo. Needs parametric polymorphism to do it right
+                crate::nodedef::ir::lfun::LFunOpCode::CallFn(func, hash_map) => {
+                    let f_type = ctx.get(func).unwrap();
+                    match f_type {
+                        Type::Lambda(LambdaType {
+                            captures: _,
+                            function: function_type,
+                        })
+                        | Type::Function(function_type) => (*function_type.1).clone(),
+                        _ => Type::Unknown,
+                    }
                 }
             },
             crate::nodedef::ir::llambda::LLambdaOpCode::ConstructLambda(lambda_def) => {

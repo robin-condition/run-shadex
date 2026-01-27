@@ -44,6 +44,8 @@ pub enum Type {
     F32,
     Bool,
     Lambda(LambdaType),
+    Function(FunctionType),
+    Texture,
     Unknown,
     Unit,
 }
@@ -56,6 +58,8 @@ impl Display for Type {
             Type::Unknown => write!(f, "unknown"),
             Type::Unit => write!(f, "unit"),
             Type::Bool => write!(f, "bool"),
+            Type::Texture => write!(f, "texture"),
+            Type::Function(fun) => fun.fmt(f),
             Type::Lambda(lambda_type) => lambda_type.fmt(f),
         }
     }
