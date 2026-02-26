@@ -8,7 +8,7 @@ use archery::ArcTK;
 use rpds::HashTrieMap;
 
 use crate::nodedef::{
-    ast::{ArithmeticOp, BoolValuedOp, MathOp},
+    ast::{ArithmeticOp, BoolValuedOp, LiteralExpressionNumber, MathOp},
     ir::{
         CaptureId, FieldId, ParamId,
         llambda::{CapturesInfo, LambdaDef, LambdaValueRef},
@@ -23,6 +23,16 @@ use crate::nodedef::{
 pub struct Interpreter {}
 
 pub mod execution_types;
+
+pub mod compiler;
+
+pub(crate) fn specific_scalar_from_lit_val(e: &LiteralExpressionNumber) -> SpecificScalar {
+    match e {
+        LiteralExpressionNumber::LiteralI32(e) => SpecificScalar::I32(e.v),
+        LiteralExpressionNumber::LiteralU32(e) => SpecificScalar::U32(e.v),
+        LiteralExpressionNumber::LiteralF32(e) => SpecificScalar::F32(e.v),
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum SpecificScalar {
@@ -103,12 +113,32 @@ fn apply_math_op<
     l: T,
     r: T,
     to_val: impl Fn(T) -> SpecificScalar,
-) -> Value {
+) -> SpecificScalar {
     match op {
-        MathOp::Arith(arithmetic_op) => Value::Scalar(to_val(arithmetic_op.apply(l, r))),
-        MathOp::Comp(bool_valued_op) => {
-            Value::Scalar(SpecificScalar::U1(bool_valued_op.apply(l, r)))
+        MathOp::Arith(arithmetic_op) => to_val(arithmetic_op.apply(l, r)),
+        MathOp::Comp(bool_valued_op) => SpecificScalar::U1(bool_valued_op.apply(l, r)),
+    }
+}
+
+pub(crate) fn apply_math_op_to_spec_scals(
+    op: MathOp,
+    l: SpecificScalar,
+    r: SpecificScalar,
+) -> SpecificScalar {
+    match (l, r) {
+        (SpecificScalar::F32(l), SpecificScalar::F32(r)) => {
+            apply_math_op(op, l, r, SpecificScalar::F32)
         }
+        (SpecificScalar::I32(l), SpecificScalar::I32(r)) => {
+            apply_math_op(op, l, r, SpecificScalar::I32)
+        }
+        (SpecificScalar::U32(l), SpecificScalar::U32(r)) => {
+            apply_math_op(op, l, r, SpecificScalar::U32)
+        }
+        (SpecificScalar::U8(l), SpecificScalar::U8(r)) => {
+            apply_math_op(op, l, r, SpecificScalar::U8)
+        }
+        _ => panic!("Can't do math on these things"),
     }
 }
 
@@ -249,17 +279,9 @@ impl Interpreter {
                                 crate::nodedef::ir::ldumb::LDumbOpCode::Nop => panic!("No op!"),
                                 crate::nodedef::ir::ldumb::LDumbOpCode::ConstantNum(
                                     literal_expression_number,
-                                ) => match literal_expression_number {
-                                    crate::nodedef::ast::LiteralExpressionNumber::LiteralI32(l) => {
-                                        Value::Scalar(SpecificScalar::I32(l.v))
-                                    }
-                                    crate::nodedef::ast::LiteralExpressionNumber::LiteralU32(l) => {
-                                        Value::Scalar(SpecificScalar::U32(l.v))
-                                    }
-                                    crate::nodedef::ast::LiteralExpressionNumber::LiteralF32(l) => {
-                                        Value::Scalar(SpecificScalar::F32(l.v))
-                                    }
-                                },
+                                ) => Value::Scalar(specific_scalar_from_lit_val(
+                                    literal_expression_number,
+                                )),
                                 crate::nodedef::ir::ldumb::LDumbOpCode::Arithmetic(
                                     four_arithmetic_expression,
                                 ) => {
@@ -268,23 +290,10 @@ impl Interpreter {
                                     let op = four_arithmetic_expression.op.clone();
 
                                     match (left, right) {
-                                        (
-                                            Value::Scalar(SpecificScalar::F32(l)),
-                                            Value::Scalar(SpecificScalar::F32(r)),
-                                        ) => apply_math_op(op, *l, *r, SpecificScalar::F32),
-                                        (
-                                            Value::Scalar(SpecificScalar::I32(l)),
-                                            Value::Scalar(SpecificScalar::I32(r)),
-                                        ) => apply_math_op(op, *l, *r, SpecificScalar::I32),
-                                        (
-                                            Value::Scalar(SpecificScalar::U32(l)),
-                                            Value::Scalar(SpecificScalar::U32(r)),
-                                        ) => apply_math_op(op, *l, *r, SpecificScalar::U32),
-                                        (
-                                            Value::Scalar(SpecificScalar::U8(l)),
-                                            Value::Scalar(SpecificScalar::U8(r)),
-                                        ) => apply_math_op(op, *l, *r, SpecificScalar::U8),
-                                        _ => panic!("Can't do math on these things"),
+                                        (Value::Scalar(s1), Value::Scalar(s2)) => {
+                                            Value::Scalar(apply_math_op_to_spec_scals(op, *s1, *s2))
+                                        }
+                                        _ => panic!("Can't do math on these things!"),
                                     }
                                 }
                                 crate::nodedef::ir::ldumb::LDumbOpCode::Copy(v) => {
